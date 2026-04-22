@@ -7,6 +7,8 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_log.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_error.h>
 
 static SDL_Window* window = NULL;
 static SDL_GPUDevice* gpu_device = NULL;
@@ -94,7 +96,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	{
 		SDL_GPUColorTargetInfo colorTargetInfo = { 0 };
 		colorTargetInfo.texture = swapchainTexture;
-		colorTargetInfo.clear_color = (SDL_FColor){ 0.3f, 0.4f, 0.5f, 1.0f };
+		colorTargetInfo.clear_color = (SDL_FColor){ 0.392f, 0.584f, 0.929f, 1.0f };
 		colorTargetInfo.load_op = SDL_GPU_LOADOP_CLEAR;
 		colorTargetInfo.store_op = SDL_GPU_STOREOP_STORE;
 
