@@ -16,12 +16,34 @@
 #include <cimgui.h>
 #include <cimgui_impl.h>
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <malloc.h>
+#include <stdio.h>
+
+typedef struct
+{
+	uint8_t registers[16];
+	uint8_t memory[4096];
+	uint16_t index;
+	uint16_t program_counter;
+	uint16_t stack[16];
+	uint8_t stack_pointer;
+	uint8_t delay_timer;
+	uint8_t sound_timer;
+	bool keypad[16];
+	uint32_t video[64 * 32];
+	uint16_t opcode;
+} emulatorState;
+
+const unsigned int START_ADDRESS = 0x200;
+
 #define igGetIO igGetIO_Nil
 
+static ImGuiIO* io = NULL;
+static emulatorState* state = NULL;
 static SDL_Window* window = NULL;
 static SDL_GPUDevice* gpu_device = NULL;
-
-ImGuiIO* io;
 
 static const SDL_DialogFileFilter filters[] =
 {
@@ -36,29 +58,30 @@ static void SDLCALL callback(void* userdata, const char* const* filelist, int fi
 		SDL_Log("An error occured: %s", SDL_GetError());
 		return;
 	}
-	else if (!*filelist)
+	
+	if (!*filelist)
 	{
-		SDL_Log("The user did not select any file.");
-		SDL_Log("Most likely, the dialog was canceled.");
+		SDL_Log("No file selected (dialog likely canceled).");
 		return;
 	}
 
-	while (*filelist)
+	const char* filePath = filelist[0];
+	SDL_Log("Opening file: %s", filePath);
+
+	FILE* file = fopen(filePath, "rb");
+
+	if (!file)
 	{
-		SDL_Log("Full path to selected file: '%s'", *filelist);
-		filelist++;
+		SDL_Log("Failed to open file!");
+		return;
 	}
-	if (filter < 0)
-	{
-		SDL_Log("The current platform does not support fetching "
-			"the selected filter, or the user did not select"
-			" any filter.");
-	}
-	else if (filter < SDL_arraysize(filters))
-	{
-		SDL_Log("The filter selected by the user is '%s' (%s).",
-			filters[filter].pattern, filters[filter].name);
-	}
+
+	fseek(file, 0, SEEK_END);
+	long fileSize = ftell(file);
+	rewind(file);
+
+	size_t bytesRead = fread(&state->memory[START_ADDRESS], 1, fileSize, file);
+	fclose(file);
 }
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -109,7 +132,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		SDL_GPU_SWAPCHAINCOMPOSITION_SDR, 
 		SDL_GPU_PRESENTMODE_VSYNC);
 
-	//IMGUI_CHECKVERSION();
 	igCreateContext(NULL);
 	io = igGetIO(); (void)io;
 
@@ -131,6 +153,14 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	init_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(gpu_device, window);
 	init_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
 	ImGui_ImplSDLGPU3_Init(&init_info);
+
+	state = malloc(sizeof *state);
+
+	if (state != NULL) 
+	{
+		*state = (emulatorState){ 0 };
+		state->program_counter = START_ADDRESS;
+	}
 
 	return SDL_APP_CONTINUE;
 }
