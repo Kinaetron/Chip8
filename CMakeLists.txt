@@ -15,7 +15,19 @@ GenerateCimguiBindings(cimgui_gpu sdl3 sdlgpu3 SDL3_INCLUDES)
 
 target_link_libraries(cimgui_gpu PRIVATE SDL3::SDL3)
 
-add_executable(Chip8 src/main.c)
+add_executable(Chip8 
+    src/main.c
+    src/chip8.c 
+    include/chip8.h
+)
+
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
+    src/main.c 
+    src/chip8.c 
+    include/chip8.h
+)
+
+target_include_directories(Chip8 PRIVATE include)
 
 target_link_libraries(Chip8 
     PRIVATE 

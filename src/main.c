@@ -16,34 +16,19 @@
 #include <cimgui.h>
 #include <cimgui_impl.h>
 
-#include <stdbool.h>
-#include <stdint.h>
 #include <malloc.h>
-#include <stdio.h>
 
-typedef struct
-{
-	uint8_t registers[16];
-	uint8_t memory[4096];
-	uint16_t index;
-	uint16_t program_counter;
-	uint16_t stack[16];
-	uint8_t stack_pointer;
-	uint8_t delay_timer;
-	uint8_t sound_timer;
-	bool keypad[16];
-	uint32_t video[64 * 32];
-	uint16_t opcode;
-} emulatorState;
-
-const unsigned int START_ADDRESS = 0x200;
+#include "chip8.h"
 
 #define igGetIO igGetIO_Nil
 
-static ImGuiIO* io = NULL;
-static emulatorState* state = NULL;
-static SDL_Window* window = NULL;
-static SDL_GPUDevice* gpu_device = NULL;
+typedef struct 
+{
+	Chip8State* state;
+	SDL_Window* window;
+	SDL_GPUDevice* gpu_device;
+	ImGuiIO* io;
+} Context;
 
 static const SDL_DialogFileFilter filters[] =
 {
@@ -53,35 +38,21 @@ static const SDL_DialogFileFilter filters[] =
 
 static void SDLCALL callback(void* userdata, const char* const* filelist, int filter)
 {
-	if (!filelist)
-	{
-		SDL_Log("An error occured: %s", SDL_GetError());
-		return;
-	}
-	
-	if (!*filelist)
-	{
-		SDL_Log("No file selected (dialog likely canceled).");
+	Context* context = (Context*)userdata;
+	chip8_state_initialization(context->state);
+
+	if (!filelist || !*filelist) {
 		return;
 	}
 
 	const char* filePath = filelist[0];
-	SDL_Log("Opening file: %s", filePath);
 
-	FILE* file = fopen(filePath, "rb");
-
-	if (!file)
-	{
-		SDL_Log("Failed to open file!");
-		return;
+	if (chip8_load_rom(context->state, filePath)) {
+		SDL_Log("ROM Loaded successfully!");
 	}
-
-	fseek(file, 0, SEEK_END);
-	long fileSize = ftell(file);
-	rewind(file);
-
-	size_t bytesRead = fread(&state->memory[START_ADDRESS], 1, fileSize, file);
-	fclose(file);
+	else {
+		SDL_Log("Failed to load ROM!");
+	}
 }
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -96,17 +67,20 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 	SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-	window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(330 * main_scale), window_flags);
-	if (window == NULL)
+	Context* context = calloc(1, sizeof(Context));
+	context->state = calloc(1, sizeof(Chip8State));
+
+	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(330 * main_scale), window_flags);
+	if (context->window == NULL)
 	{
 		SDL_Log("Couldn't create window: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
 
-	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-	SDL_ShowWindow(window);
+	SDL_SetWindowPosition(context->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	SDL_ShowWindow(context->window);
 
-	gpu_device = SDL_CreateGPUDevice(
+	context->gpu_device = SDL_CreateGPUDevice(
 		SDL_GPU_SHADERFORMAT_SPIRV | 
 		SDL_GPU_SHADERFORMAT_DXIL | 
 		SDL_GPU_SHADERFORMAT_MSL | 
@@ -114,54 +88,52 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		true, 
 		NULL);
 
-	if (gpu_device == NULL) 
+	if (context->gpu_device == NULL)
 	{
 		SDL_Log("Error: SDL_CreateGPUDevice: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
 
-	if (!SDL_ClaimWindowForGPUDevice(gpu_device, window))
+	if (!SDL_ClaimWindowForGPUDevice(context->gpu_device, context->window))
 	{
 		SDL_Log("Error: SDL_CreateGPUDevice Window Claim: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
 
 	SDL_SetGPUSwapchainParameters(
-		gpu_device, 
-		window, 
+		context->gpu_device,
+		context->window,
 		SDL_GPU_SWAPCHAINCOMPOSITION_SDR, 
 		SDL_GPU_PRESENTMODE_VSYNC);
 
 	igCreateContext(NULL);
-	io = igGetIO(); (void)io;
+	context->io = igGetIO(); (void)context->io;
 
-	io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-	io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+	context->io->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	context->io->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
 	igStyleColorsDark(NULL);
 
 	ImGuiStyle* style = igGetStyle();
 	ImGuiStyle_ScaleAllSizes(style, main_scale);
 	style->FontScaleDpi = main_scale;
-	io->ConfigDpiScaleFonts = true;
-	io->ConfigDpiScaleViewports = true;
+	context->io->ConfigDpiScaleFonts = true;
+	context->io->ConfigDpiScaleViewports = true;
 
-	ImGui_ImplSDL3_InitForSDLGPU(window);
+	ImGui_ImplSDL3_InitForSDLGPU(context->window);
 	ImGui_ImplSDLGPU3_InitInfo init_info;
 
-	init_info.Device = gpu_device;
-	init_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(gpu_device, window);
+	init_info.Device = context->gpu_device;
+	init_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(
+		context->gpu_device,
+		context->window);
+
 	init_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
 	ImGui_ImplSDLGPU3_Init(&init_info);
 
-	state = malloc(sizeof *state);
+	chip8_state_initialization(context->state);
 
-	if (state != NULL) 
-	{
-		*state = (emulatorState){ 0 };
-		state->program_counter = START_ADDRESS;
-	}
-
+	*appstate = context;
 	return SDL_APP_CONTINUE;
 }
 
@@ -178,6 +150,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 
 SDL_AppResult SDL_AppIterate(void* appstate)
 {
+	Context* context = (Context*)appstate;
+
 	ImGui_ImplSDLGPU3_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	igNewFrame();
@@ -190,8 +164,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 				{
 					SDL_ShowOpenFileDialog(
 						callback,
-						NULL,
-						window,
+						context,
+						context->window,
 						filters,
 						SDL_arraysize(filters),
 						NULL,
@@ -216,7 +190,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	ImDrawData* draw_data = igGetDrawData();
 	const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
 
-	SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(gpu_device);
+	SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(context->gpu_device);
 	if (cmdbuf == NULL)
 	{
 		SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
@@ -226,7 +200,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	SDL_GPUTexture* swapchainTexture;
 	if (!SDL_WaitAndAcquireGPUSwapchainTexture(
 		cmdbuf, 
-		window, 
+		context->window, 
 		&swapchainTexture, 
 		NULL, 
 		NULL)) 
@@ -267,13 +241,22 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) 
 {
-	SDL_WaitForGPUIdle(gpu_device);
-	ImGui_ImplSDL3_Shutdown();
-	ImGui_ImplSDLGPU3_Shutdown();
-	igDestroyContext(NULL);
+	Context* context = (Context*)appstate;
 
-	SDL_ReleaseWindowFromGPUDevice(gpu_device, window);
-	SDL_DestroyGPUDevice(gpu_device);
-	SDL_DestroyWindow(window);
+	if (context)
+	{
+		SDL_WaitForGPUIdle(context->gpu_device);
+		ImGui_ImplSDL3_Shutdown();
+		ImGui_ImplSDLGPU3_Shutdown();
+		igDestroyContext(NULL);
+
+		SDL_ReleaseWindowFromGPUDevice(context->gpu_device, context->window);
+		SDL_DestroyGPUDevice(context->gpu_device);
+		SDL_DestroyWindow(context->window);
+
+		free(context->state);
+		free(context);
+	}
+
 	SDL_Quit();
 }
