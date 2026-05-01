@@ -19,6 +19,7 @@
 #include <malloc.h>
 
 #include "chip8.h"
+#include "shader.h"
 
 #define igGetIO igGetIO_Nil
 
@@ -65,12 +66,12 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	}
 
 	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-	SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+	SDL_WindowFlags window_flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
 	Context* context = calloc(1, sizeof(Context));
 	context->state = calloc(1, sizeof(Chip8State));
 
-	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(330 * main_scale), window_flags);
+	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale), window_flags);
 	if (context->window == NULL)
 	{
 		SDL_Log("Couldn't create window: %s", SDL_GetError());
@@ -132,6 +133,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	ImGui_ImplSDLGPU3_Init(&init_info);
 
 	chip8_state_initialization(context->state);
+
+	SDL_GPUShader* vertexShader = LoadShader(context->gpu_device, "chip8.vert", 0, 0, 0);
+	if (vertexShader == NULL)
+	{
+		SDL_Log("Failed to create vertex shader!");
+		return SDL_APP_FAILURE;
+	}
 
 	*appstate = context;
 	return SDL_APP_CONTINUE;
