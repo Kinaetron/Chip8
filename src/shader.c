@@ -1,5 +1,4 @@
 #include "shader.h"
-#include <SDL3/SDL_shadercross.h>
 
 SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* shaderFilename, uint32_t samplerCount, uint32_t uniformBufferCount, uint32_t storageTextureCount)
 {

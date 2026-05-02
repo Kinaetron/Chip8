@@ -19,7 +19,7 @@
 #include <malloc.h>
 
 #include "chip8.h"
-#include "shader.h"
+
 
 #define igGetIO igGetIO_Nil
 
@@ -133,13 +133,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	ImGui_ImplSDLGPU3_Init(&init_info);
 
 	chip8_state_initialization(context->state);
-
-	SDL_GPUShader* vertexShader = LoadShader(context->gpu_device, "chip8.vert", 0, 0, 0);
-	if (vertexShader == NULL)
-	{
-		SDL_Log("Failed to create vertex shader!");
-		return SDL_APP_FAILURE;
-	}
 
 	*appstate = context;
 	return SDL_APP_CONTINUE;
