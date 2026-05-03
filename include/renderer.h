@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <SDL3/SDL.h>
 
+#define CHIP8_SCREEN_WIDTH 64
+#define CHIP8_SCREEN_HEIGHT 32
+
 typedef struct PositionTextureVertex
 {
 	float x, y, z;
@@ -31,5 +34,6 @@ SDL_GPUShader* LoadShader(
 );
 
 int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContext* context);
+void UploadChip8Texture(SDL_GPUDevice* device, SDL_GPUCommandBuffer* commandBuffer, GraphicsContext* context, uint32_t* screen_data);
 
 #endif

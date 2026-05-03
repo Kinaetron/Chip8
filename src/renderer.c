@@ -157,9 +157,9 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 		.min_filter = SDL_GPU_FILTER_NEAREST,
 		.mag_filter = SDL_GPU_FILTER_NEAREST,
 		.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST,
-		.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
-		.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
-		.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+		.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+		.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+		.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
 	});
 
 	context->vertexBuffer = SDL_CreateGPUBuffer(device, &(SDL_GPUBufferCreateInfo) 
@@ -174,7 +174,6 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 		"Chip 8 Screen Buffer"
 	);
 
-
 	context->indexBuffer = SDL_CreateGPUBuffer(device, &(SDL_GPUBufferCreateInfo){
 		.usage = SDL_GPU_BUFFERUSAGE_INDEX,
 		.size = sizeof(uint16_t) * 6
@@ -183,8 +182,8 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	context->screenTexture = SDL_CreateGPUTexture(device, &(SDL_GPUTextureCreateInfo){
 		.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
 		.type = SDL_GPU_TEXTURETYPE_2D,
-		.width = 64,
-		.height = 32,
+		.width = CHIP8_SCREEN_WIDTH,
+		.height = CHIP8_SCREEN_HEIGHT,
 		.layer_count_or_depth = 1,
 		.num_levels = 1,
 		.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
@@ -196,24 +195,25 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 		"Screen Texture"
 	);
 
-	context->transferBuffer = SDL_CreateGPUTransferBuffer(
+	SDL_GPUTransferBuffer* bufferTransferBuffer = SDL_CreateGPUTransferBuffer(
 		device,
 		&(SDL_GPUTransferBufferCreateInfo) {
 		.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
 			.size = (sizeof(PositionTextureVertex) * 4) + (sizeof(Uint16) * 6)
 	});
 
-	PositionTextureVertex* vertexData = SDL_MapGPUTransferBuffer(
-		device, 
-		context->transferBuffer, 
-		false);
+	PositionTextureVertex* transferData = SDL_MapGPUTransferBuffer(
+		device,
+		bufferTransferBuffer,
+		false
+	);
+	
+	transferData[0] = (PositionTextureVertex){ -1.0f,  1.0f, 0.0f, 0.0f, 0.0f };
+	transferData[1] = (PositionTextureVertex){ 1.0f,  1.0f, 0.0f, 1.0f, 0.0f };
+	transferData[2] = (PositionTextureVertex){ 1.0f, -1.0f, 0.0f, 1.0f, 1.0f };
+	transferData[3] = (PositionTextureVertex){ -1.0f, -1.0f, 0.0f, 0.0f, 1.0f };
 
-	vertexData[0] = (PositionTextureVertex){ -1.0f,  1.0f, 0.0f, 0.0f, 0.0f };
-	vertexData[1] = (PositionTextureVertex){ 1.0f,  1.0f, 0.0f, 1.0f, 0.0f };
-	vertexData[2] = (PositionTextureVertex){ 1.0f, -1.0f, 0.0f, 1.0f, 1.0f };
-	vertexData[3] = (PositionTextureVertex){ -1.0f, -1.0f, 0.0f, 0.0f, 1.0f };
-
-	uint16_t* indexData = (uint16_t*)&vertexData[4];
+	uint16_t* indexData = (uint16_t*)&transferData[4];
 	indexData[0] = 0; 
 	indexData[1] = 1; 
 	indexData[2] = 2;
@@ -221,7 +221,75 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	indexData[4] = 2; 
 	indexData[5] = 3;
 
+	SDL_UnmapGPUTransferBuffer(device, bufferTransferBuffer);
+
+	SDL_GPUCommandBuffer* uploadCommandBuffer = SDL_AcquireGPUCommandBuffer(device);
+	SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(uploadCommandBuffer);
+
+	SDL_UploadToGPUBuffer(
+		copyPass,
+		&(SDL_GPUTransferBufferLocation) {
+		.transfer_buffer = bufferTransferBuffer,
+			.offset = 0
+	},
+		& (SDL_GPUBufferRegion) {
+		.buffer = context->vertexBuffer,
+			.offset = 0,
+			.size = sizeof(PositionTextureVertex) * 4
+	},
+		false
+	);
+
+	SDL_UploadToGPUBuffer(
+		copyPass,
+		&(SDL_GPUTransferBufferLocation) {
+		.transfer_buffer = bufferTransferBuffer,
+			.offset = sizeof(PositionTextureVertex) * 4
+	},
+		& (SDL_GPUBufferRegion) {
+		.buffer = context->indexBuffer,
+			.offset = 0,
+			.size = sizeof(Uint16) * 6
+	},
+		false
+	);
+
+	SDL_EndGPUCopyPass(copyPass);
+	SDL_SubmitGPUCommandBuffer(uploadCommandBuffer);
+	SDL_ReleaseGPUTransferBuffer(device, bufferTransferBuffer);
+
+	context->transferBuffer = SDL_CreateGPUTransferBuffer(
+		device,
+		&(SDL_GPUTransferBufferCreateInfo){
+		.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+			.size = CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT * sizeof(uint32_t)
+	});
+	return 0;
+}
+
+void UploadChip8Texture(SDL_GPUDevice* device, SDL_GPUCommandBuffer* commandBuffer, GraphicsContext* context, uint32_t* screen_data)
+{
+	uint32_t* pixels = SDL_MapGPUTransferBuffer(device, context->transferBuffer, false);
+	SDL_memcpy(pixels, screen_data, CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT * sizeof(uint32_t));
 	SDL_UnmapGPUTransferBuffer(device, context->transferBuffer);
 
-	return 0;
+	SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
+
+
+	SDL_UploadToGPUTexture(
+		copyPass,
+		&(SDL_GPUTextureTransferInfo) {
+		.transfer_buffer = context->transferBuffer,
+			.offset = 0,
+	},
+		& (SDL_GPUTextureRegion) {
+		.texture = context->screenTexture,
+			.w = CHIP8_SCREEN_WIDTH,
+			.h = CHIP8_SCREEN_HEIGHT,
+			.d = 1
+	},
+		false
+	);
+
+	SDL_EndGPUCopyPass(copyPass);
 }
