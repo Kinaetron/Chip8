@@ -19,6 +19,8 @@
 #include <malloc.h>
 
 #include "chip8.h"
+#include "renderer.h"
+
 
 #define igGetIO igGetIO_Nil
 
@@ -28,6 +30,7 @@ typedef struct
 	SDL_Window* window;
 	SDL_GPUDevice* gpu_device;
 	ImGuiIO* io;
+	GraphicsContext* graphicsContext;
 } Context;
 
 static const SDL_DialogFileFilter filters[] =
@@ -65,12 +68,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	}
 
 	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-	SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+	SDL_WindowFlags window_flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
 	Context* context = calloc(1, sizeof(Context));
 	context->state = calloc(1, sizeof(Chip8State));
+	context->graphicsContext = calloc(1, sizeof(GraphicsContext));
 
-	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(330 * main_scale), window_flags);
+	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale), window_flags);
 	if (context->window == NULL)
 	{
 		SDL_Log("Couldn't create window: %s", SDL_GetError());
@@ -133,6 +137,11 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 	chip8_state_initialization(context->state);
 
+	InitializeRenderer(
+		context->gpu_device,
+		context->window,
+		context->graphicsContext);
+
 	*appstate = context;
 	return SDL_APP_CONTINUE;
 }
@@ -155,6 +164,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	ImGui_ImplSDLGPU3_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
 	igNewFrame();
+
 	{
 		if (igBeginMainMenuBar())
 		{
@@ -186,20 +196,28 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 			igEndMainMenuBar();
 		}
 	}
+
 	igRender();
 	ImDrawData* draw_data = igGetDrawData();
 	const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
 
-	SDL_GPUCommandBuffer* cmdbuf = SDL_AcquireGPUCommandBuffer(context->gpu_device);
-	if (cmdbuf == NULL)
+	SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(context->gpu_device);
+	if (commandBuffer == NULL)
 	{
 		SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
 
+	UploadChip8Texture(
+		context->gpu_device,
+		commandBuffer,
+		context->graphicsContext,
+		context->state->video);
+
+
 	SDL_GPUTexture* swapchainTexture;
 	if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-		cmdbuf, 
+		commandBuffer,
 		context->window, 
 		&swapchainTexture, 
 		NULL, 
@@ -211,30 +229,31 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 	if (swapchainTexture != NULL)
 	{
-		ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, cmdbuf);
+		ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, commandBuffer);
 
-		SDL_GPUColorTargetInfo target_info;
+		SDL_GPUColorTargetInfo target_info = { 0 };
 		target_info.texture = swapchainTexture;
 		target_info.load_op = SDL_GPU_LOADOP_CLEAR;
 		target_info.store_op = SDL_GPU_STOREOP_STORE;
-		target_info.clear_color = (SDL_FColor){ 0.392f, 0.584f, 0.929f, 1.0f };
-		target_info.mip_level = 0;
-		target_info.layer_or_depth_plane = 0;
-		target_info.cycle = false;
-		target_info.resolve_texture = NULL;
-		target_info.resolve_mip_level = 0;
-		target_info.resolve_layer = 0;
-		target_info.cycle_resolve_texture = false;
-		target_info.padding1 = 0;
-		target_info.padding2 = 0;
-		SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(cmdbuf, &target_info, 1, NULL);
+		target_info.clear_color = (SDL_FColor){ 0.0f, 0.0f, 0.0f, 1.0f };
+		target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+		target_info.store_op = SDL_GPU_STOREOP_STORE;
 
-		ImGui_ImplSDLGPU3_RenderDrawData(draw_data, cmdbuf, render_pass, NULL);
+		SDL_GPURenderPass* renderPass =
+			SDL_BeginGPURenderPass(commandBuffer, &target_info, 1, NULL);
 
-		SDL_EndGPURenderPass(render_pass);
+		SDL_BindGPUGraphicsPipeline(renderPass, context->graphicsContext->pipeline);
+		SDL_BindGPUVertexBuffers(renderPass, 0, &(SDL_GPUBufferBinding){.buffer = context->graphicsContext->vertexBuffer, .offset = 0 }, 1);
+		SDL_BindGPUIndexBuffer(renderPass, &(SDL_GPUBufferBinding){.buffer = context->graphicsContext->indexBuffer, .offset = 0 }, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+		SDL_BindGPUFragmentSamplers(renderPass, 0, &(SDL_GPUTextureSamplerBinding){.texture = context->graphicsContext->screenTexture, .sampler = context->graphicsContext->sampler }, 1);
+		SDL_DrawGPUIndexedPrimitives(renderPass, 6, 1, 0, 0, 0);
+
+		ImGui_ImplSDLGPU3_RenderDrawData(draw_data, commandBuffer, renderPass, NULL);
+
+		SDL_EndGPURenderPass(renderPass);
 	}
 
-	SDL_SubmitGPUCommandBuffer(cmdbuf);
+	SDL_SubmitGPUCommandBuffer(commandBuffer);
 
 	return SDL_APP_CONTINUE;
 }

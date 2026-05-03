@@ -15,16 +15,24 @@ GenerateCimguiBindings(cimgui_gpu sdl3 sdlgpu3 SDL3_INCLUDES)
 
 target_link_libraries(cimgui_gpu PRIVATE SDL3::SDL3)
 
+file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS "shaders/source/*")
+
 add_executable(Chip8 
     src/main.c
-    src/chip8.c 
+    src/chip8.c
+    src/renderer.c 
     include/chip8.h
+    include/renderer.h
+    ${SHADER_SOURCES}
 )
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
     src/main.c 
-    src/chip8.c 
+    src/chip8.c
+    src/renderer.c 
     include/chip8.h
+    include/renderer.h
+    ${SHADER_SOURCES}
 )
 
 target_include_directories(Chip8 PRIVATE include)
@@ -39,4 +47,11 @@ target_compile_definitions(Chip8 PRIVATE
     CIMGUI_DEFINE_ENUMS_AND_STRUCTS=1
     CIMGUI_USE_SDL3=1
     CIMGUI_USE_SDLGPU3=1
+)
+
+add_custom_command(TARGET Chip8 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compiled"
+        "$<TARGET_FILE_DIR:Chip8>/shaders/compiled"
+    COMMENT "Deploying compiled shaders to build folder..."
 )

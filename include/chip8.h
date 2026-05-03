@@ -25,4 +25,4 @@ typedef struct
 void chip8_state_initialization(Chip8State* state);
 bool chip8_load_rom(Chip8State* state, const char* filePath);
 
-#endif // !CHIP8_H
+#endif
