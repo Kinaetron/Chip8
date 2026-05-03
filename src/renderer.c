@@ -87,14 +87,14 @@ SDL_GPUShader* LoadShader(
 
 int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContext* context)
 {
-	SDL_GPUShader* vertexShader = LoadShader(device, "TexturedQuad.vert", 0, 0, 0, 0);
+	SDL_GPUShader* vertexShader = LoadShader(device, "chip8.vert", 0, 0, 0, 0);
 	if (vertexShader == NULL)
 	{
 		SDL_Log("Failed to create vertex shader %s", SDL_GetError());
 		return -1;
 	}
 
-	SDL_GPUShader* fragmentShader = LoadShader(device, "TexturedQuad.frag", 1, 0, 0, 0);
+	SDL_GPUShader* fragmentShader = LoadShader(device, "chip8.frag", 1, 0, 0, 0);
 	if (fragmentShader == NULL)
 	{
 		SDL_Log("Failed to create fragment shader %s", SDL_GetError());
