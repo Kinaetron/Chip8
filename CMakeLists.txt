@@ -20,18 +20,18 @@ file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS "shaders/source/*")
 add_executable(Chip8 
     src/main.c
     src/chip8.c
-    src/shader.c 
+    src/renderer.c 
     include/chip8.h
-    include/shader.h
+    include/renderer.h
     ${SHADER_SOURCES}
 )
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
     src/main.c 
     src/chip8.c
-    src/shader.c 
+    src/renderer.c 
     include/chip8.h
-    include/shader.h
+    include/renderer.h
     ${SHADER_SOURCES}
 )
 

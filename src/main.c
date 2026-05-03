@@ -19,6 +19,7 @@
 #include <malloc.h>
 
 #include "chip8.h"
+#include "renderer.h"
 
 
 #define igGetIO igGetIO_Nil
@@ -29,6 +30,7 @@ typedef struct
 	SDL_Window* window;
 	SDL_GPUDevice* gpu_device;
 	ImGuiIO* io;
+	GraphicsContext* graphicsContext;
 } Context;
 
 static const SDL_DialogFileFilter filters[] =
@@ -70,6 +72,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 	Context* context = calloc(1, sizeof(Context));
 	context->state = calloc(1, sizeof(Chip8State));
+	context->graphicsContext = calloc(1, sizeof(GraphicsContext));
 
 	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale), window_flags);
 	if (context->window == NULL)
@@ -133,6 +136,11 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	ImGui_ImplSDLGPU3_Init(&init_info);
 
 	chip8_state_initialization(context->state);
+
+	InitializeRenderer(
+		context->gpu_device,
+		context->window,
+		context->graphicsContext);
 
 	*appstate = context;
 	return SDL_APP_CONTINUE;

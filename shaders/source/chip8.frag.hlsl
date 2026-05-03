@@ -1,8 +1,13 @@
-Texture2DArray<float4> Texture : register(t0, space2);
-SamplerState Sampler : register(s0, space2);
-
-float4 main(float2 TexCoord : TEXCOORD0) : SV_Target0
+struct VS_Output
 {
-    uint arrayIndex = uint(int(TexCoord.y > 0.5f));
-    return Texture.Sample(Sampler, float3(TexCoord, float(arrayIndex)));
+    float4 Position : SV_Position;
+    float2 TexCoord : TEXCOORD0;
+};
+
+Texture2D Chip8Texture : register(t0);
+SamplerState Chip8Sampler : register(s0);
+
+float4 main(VS_Output input) : SV_Target
+{
+    return Chip8Texture.Sample(Chip8Sampler, input.TexCoord);
 }
