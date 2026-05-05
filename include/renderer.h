@@ -7,13 +7,15 @@
 #define CHIP8_SCREEN_WIDTH 64
 #define CHIP8_SCREEN_HEIGHT 32
 
+typedef struct Context Context;
+
 typedef struct PositionTextureVertex
 {
 	float x, y, z;
 	float u, v;
 } PositionTextureVertex;
 
-typedef struct
+typedef struct GraphicsContext
 {
 	SDL_GPUGraphicsPipeline* pipeline;
 	SDL_GPUBuffer* vertexBuffer;
@@ -30,10 +32,13 @@ SDL_GPUShader* LoadShader(
 	uint32_t samplerCount,
 	uint32_t uniformBufferCount,
 	uint32_t storageBufferCount,
-	uint32_t storageTextureCount
-);
+	uint32_t storageTextureCount);
 
-int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContext* context);
-void UploadChip8Texture(SDL_GPUDevice* device, SDL_GPUCommandBuffer* commandBuffer, GraphicsContext* context, uint32_t* screen_data);
+int InitializeRenderer(Context* context);
+void Render(
+	SDL_GPUDevice* device, 
+	GraphicsContext* context, 
+	SDL_Window* window,
+	Chip8State* state);
 
 #endif
