@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <SDL3/SDL_events.h>
 
 #define CHIP8_MEMORY_SIZE 4096
 #define CHIP8_START_ADDRESS 0x200
@@ -22,6 +23,7 @@ typedef struct
 	uint16_t opcode;
 } Chip8State;
 
+void chip_input_state(SDL_Event* event, bool* inputState);
 void chip8_state_initialization(Chip8State* state);
 bool chip8_load_rom(Chip8State* state, const char* filePath);
 

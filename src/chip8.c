@@ -1,6 +1,8 @@
 #include "chip8.h"
 
 #include <stdio.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_keycode.h>
 
 #define FONT_SIZE 80
 
@@ -58,4 +60,75 @@ bool chip8_load_rom(Chip8State* state, const char* filePath)
 	fclose(file);
 
 	return (bytesRead == (size_t)fileSize);
+}
+
+void chip_input_state(SDL_Event* event, bool* inputState)
+{
+	bool isPressed = (event->type == SDL_EVENT_KEY_DOWN);
+	switch (event->key.key)
+	{
+		case SDLK_1:
+			inputState[0] = isPressed;
+			break;
+
+		case SDLK_2:
+			inputState[1] = isPressed;
+			break;
+
+		case SDLK_3:
+			inputState[2] = isPressed;
+			break;
+
+		case SDLK_4:
+			inputState[3] = isPressed;
+			break;
+
+		case SDLK_Q:
+			inputState[4] = isPressed;
+			break;
+
+		case SDLK_W:
+			inputState[5] = isPressed;
+			break;
+
+		case SDLK_E:
+			inputState[6] = isPressed;
+			break;
+
+		case SDLK_R:
+			inputState[7] = isPressed;
+			break;
+
+		case SDLK_A:
+			inputState[8] = isPressed;
+			break;
+
+		case SDLK_S:
+			inputState[9] = isPressed;
+			break;
+
+		case SDLK_D:
+			inputState[10] = isPressed;
+			break;
+
+		case SDLK_F:
+			inputState[11] = isPressed;
+			break;
+
+		case SDLK_Z:
+			inputState[12] = isPressed;
+			break;
+
+		case SDLK_X:
+			inputState[13] = isPressed;
+			break;
+
+		case SDLK_C:
+			inputState[14] = isPressed;
+			break;
+
+		case SDLK_V:
+			inputState[15] = isPressed;
+			break;
+	}
 }

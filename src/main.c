@@ -48,6 +48,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
+	Context* context = (Context*)appstate;
+
+	chip_input_state(event, context->state->keypad);
 	ui_process_event(event);
 
 	if (event->type == SDL_EVENT_QUIT) {
