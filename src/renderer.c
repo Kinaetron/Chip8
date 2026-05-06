@@ -409,4 +409,5 @@ void Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window,
 		SDL_EndGPURenderPass(renderPass);
 	}
 
+	SDL_SubmitGPUCommandBuffer(commandBuffer);
 }
