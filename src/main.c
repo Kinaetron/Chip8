@@ -14,11 +14,32 @@
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 {
 	Context* context = calloc(1, sizeof(Context));
+	if (context == NULL) 
+	{
+		SDL_Log("Couldn't allocate memory for context");
+		return SDL_APP_FAILURE;
+	}
+
 	context->state = calloc(1, sizeof(Chip8State));
+	if (context->state == NULL)
+	{
+		SDL_Log("Couldn't allocate memory for chip8 state");
+		return SDL_APP_FAILURE;
+	}
+
 	context->graphicsContext = calloc(1, sizeof(GraphicsContext));
+	if (context->graphicsContext == NULL)
+	{
+		SDL_Log("Couldn't allocate memory for graphics context");
+		return SDL_APP_FAILURE;
+	}
 
 	chip8_state_initialization(context->state);
-	InitializeRenderer(context);
+	SDL_AppResult result = InitializeRenderer(context);
+
+	if (result == SDL_APP_FAILURE) {
+		return SDL_APP_FAILURE;
+	}
 
 	*appstate = context;
 	return SDL_APP_CONTINUE;
@@ -39,13 +60,11 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 {
 	Context* context = (Context*)appstate;
 
-	Render(
+	return Render(
 		context->gpu_device,
 		context->graphicsContext,
 		context->window,
 		context->state);
-
-	return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) 

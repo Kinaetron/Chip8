@@ -87,7 +87,7 @@ SDL_GPUShader* LoadShader(
 	return shader;
 }
 
-int InitializeRenderer(Context* context)
+SDL_AppResult InitializeRenderer(Context* context)
 {
 	SDL_SetAppMetadata("Chip 8 Emulator", "1.0", "com.chip8-emulator");
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
@@ -334,7 +334,7 @@ int InitializeRenderer(Context* context)
 	return 0;
 }
 
-void Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window, Chip8State* state)
+SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window, Chip8State* state)
 {
 	SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
 
@@ -410,4 +410,6 @@ void Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window,
 	}
 
 	SDL_SubmitGPUCommandBuffer(commandBuffer);
+
+	return SDL_APP_CONTINUE;
 }

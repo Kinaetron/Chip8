@@ -34,8 +34,10 @@ SDL_GPUShader* LoadShader(
 	uint32_t storageBufferCount,
 	uint32_t storageTextureCount);
 
-int InitializeRenderer(Context* context);
-void Render(
+SDL_AppResult InitializeRenderer(Context* context);
+
+
+SDL_AppResult Render(
 	SDL_GPUDevice* device, 
 	GraphicsContext* context, 
 	SDL_Window* window,
