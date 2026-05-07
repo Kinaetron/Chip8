@@ -5,6 +5,9 @@
 #include <SDL3/SDL_keycode.h>
 
 #define FONT_SIZE 80
+#define PIXEL_ON 0xFFFFFFFF
+#define PIXEL_OFF 0xFF000000
+#define SCREEN_SIZE 64 * 32
 
 uint8_t chip8_fontset[FONT_SIZE] =
 {
@@ -59,7 +62,9 @@ bool chip8_load_rom(Chip8State* state, const char* filePath)
 	size_t bytesRead = fread(&state->memory[CHIP8_START_ADDRESS], 1, fileSize, file);
 	fclose(file);
 
-	return (bytesRead == (size_t)fileSize);
+	state->rom_loaded = (bytesRead == (size_t)fileSize);
+
+	return state->rom_loaded;
 }
 
 void chip_input_state(SDL_Event* event, bool* inputState)
@@ -130,5 +135,90 @@ void chip_input_state(SDL_Event* event, bool* inputState)
 		case SDLK_V:
 			inputState[15] = isPressed;
 			break;
+	}
+}
+
+static void op_0x00E0(Chip8State* state) 
+{
+	for (int i = 0; i < SCREEN_SIZE; i++) {
+		state->video[i] = PIXEL_OFF;
+	}
+}
+
+static void op_0x1NNN(Chip8State* state)
+{
+	uint16_t address = state->opcode & 0x0FFF;
+	state->program_counter = address;
+}
+
+static void op_0x6XNN(Chip8State* state)
+{
+	uint8_t vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t value = state->opcode & 0x00FF;
+
+	state->registers[vx] = value;
+}
+
+static void op_0x7XNN(Chip8State* state)
+{
+	uint8_t vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t value = state->opcode & 0x00FF;
+
+	state->registers[vx] += value;
+}
+
+static void op_OxANNN(Chip8State* state)
+{
+	uint16_t address = state->opcode & 0x0FFF;
+	state->index = address;
+}
+
+void chip8_cycle(Chip8State* state)
+{
+	if (!state->rom_loaded) {
+		return;
+	}
+
+	state->opcode =
+		(state->memory[state->program_counter] << 8u) |
+		 state->memory[state->program_counter + 1];
+
+	state->program_counter += 2;
+
+	switch (state->opcode & 0xF000)
+	{
+		case 0x0000:
+		{
+			switch (state->opcode & 0x00FF)
+			{
+				case 0x00E0:
+					op_0x00E0(state);
+					break;
+
+				default:
+					printf("Unknown opcode: %04X\n", state->opcode);
+					break;
+			}
+		} break;
+
+		case 0x1000:
+		{
+			op_0x1NNN(state);
+		} break;
+
+		case 0x6000:
+		{
+			op_0x6XNN(state);
+		} break;
+
+		case 0x7000:
+		{
+			op_0x7XNN(state);
+		} break;
+		case 0xA000:
+		{
+			op_OxANNN(state);
+		} break;
+
 	}
 }

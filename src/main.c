@@ -64,6 +64,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 {
 	Context* context = (Context*)appstate;
 
+	chip8_cycle(context->state);
+
 	return Render(
 		context->gpu_device,
 		context->graphicsContext,

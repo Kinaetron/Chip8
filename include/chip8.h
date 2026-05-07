@@ -21,10 +21,12 @@ typedef struct
 	bool keypad[16];
 	uint32_t video[64 * 32];
 	uint16_t opcode;
+	bool rom_loaded;
 } Chip8State;
 
 void chip_input_state(SDL_Event* event, bool* inputState);
 void chip8_state_initialization(Chip8State* state);
 bool chip8_load_rom(Chip8State* state, const char* filePath);
+void chip8_cycle(Chip8State* state);
 
 #endif
