@@ -8,6 +8,17 @@
 #define CHIP8_MEMORY_SIZE 4096
 #define CHIP8_START_ADDRESS 0x200
 
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 32
+
+typedef struct
+{
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+	uint8_t a;
+} Pixel;
+
 typedef struct
 {
 	uint8_t registers[16];
@@ -19,7 +30,7 @@ typedef struct
 	uint8_t delay_timer;
 	uint8_t sound_timer;
 	bool keypad[16];
-	uint32_t video[64 * 32];
+	Pixel video[64 * 32];
 	uint16_t opcode;
 	bool rom_loaded;
 } Chip8State;

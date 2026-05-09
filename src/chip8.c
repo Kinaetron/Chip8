@@ -5,8 +5,8 @@
 #include <SDL3/SDL_keycode.h>
 
 #define FONT_SIZE 80
-#define PIXEL_ON 0xFFFFFFFF
-#define PIXEL_OFF 0xFF000000
+#define PIXEL_ON  (Pixel){255,255,255,255}
+#define PIXEL_OFF (Pixel){0,0,0,255}
 #define SCREEN_SIZE 64 * 32
 
 uint8_t chip8_fontset[FONT_SIZE] =
@@ -173,6 +173,47 @@ static void op_OxANNN(Chip8State* state)
 	state->index = address;
 }
 
+static void op_OxDXYN(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+	uint8_t height = state->opcode & 0x000F;
+
+	uint8_t xPosition = state->registers[Vx] % SCREEN_WIDTH;
+	uint8_t yPosition = state->registers[Vy] % SCREEN_HEIGHT;
+
+	state->registers[0xF] = 0;
+
+	for (unsigned int row = 0; row < height; row++)
+	{
+		uint8_t spriteByte = state->memory[state->index + row];
+
+		for (unsigned int column = 0; column < 8; column++)
+		{
+			uint8_t spritePixel = spriteByte & (0x80 >> column);
+
+			if (spritePixel)
+			{
+				uint32_t x = (xPosition + column) % SCREEN_WIDTH;
+				uint32_t y = (yPosition + row) % SCREEN_HEIGHT;
+
+				Pixel* screenPixel = &state->video[y * SCREEN_WIDTH + x];
+
+				bool pixelWasOn = (screenPixel->r == 255);
+
+				if (pixelWasOn)
+				{
+					state->registers[0xF] = 1;
+					*screenPixel = PIXEL_OFF;
+				}
+				else {
+					*screenPixel = PIXEL_ON;
+				}
+			}
+		}
+	}
+}
+
 void chip8_cycle(Chip8State* state)
 {
 	if (!state->rom_loaded) {
@@ -219,6 +260,9 @@ void chip8_cycle(Chip8State* state)
 		{
 			op_OxANNN(state);
 		} break;
-
+		case 0xD000:
+		{
+			op_OxDXYN(state);
+		}
 	}
 }
