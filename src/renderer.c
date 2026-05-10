@@ -99,7 +99,7 @@ SDL_AppResult InitializeRenderer(Context* context)
 	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 	SDL_WindowFlags window_flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale), window_flags);
+	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale) + 15, window_flags);
 	if (context->window == NULL)
 	{
 		SDL_Log("Couldn't create window: %s", SDL_GetError());
@@ -399,6 +399,7 @@ SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window
 			SDL_BeginGPURenderPass(commandBuffer, &target_info, 1, NULL);
 
 		SDL_BindGPUGraphicsPipeline(renderPass, context->pipeline);
+		SDL_SetGPUViewport(renderPass, &(SDL_GPUViewport){ 0, 15, 640, 320 });
 		SDL_BindGPUVertexBuffers(renderPass, 0, &(SDL_GPUBufferBinding){.buffer = context->vertexBuffer, .offset = 0 }, 1);
 		SDL_BindGPUIndexBuffer(renderPass, &(SDL_GPUBufferBinding){.buffer = context->indexBuffer, .offset = 0 }, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 		SDL_BindGPUFragmentSamplers(renderPass, 0, &(SDL_GPUTextureSamplerBinding){.texture = context->screenTexture, .sampler = context->sampler }, 1);
