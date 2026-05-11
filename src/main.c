@@ -35,7 +35,6 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		return SDL_APP_FAILURE;
 	}
 
-	chip8_state_initialization(context->state);
 	SDL_AppResult result = InitializeRenderer(context);
 
 	if (result == SDL_APP_FAILURE) {

@@ -43,6 +43,7 @@ void chip8_state_initialization(Chip8State* state)
 
 bool chip8_load_rom(Chip8State* state, const char* filePath)
 {
+	chip8_state_initialization(state);
 	FILE* file = fopen(filePath, "rb");
 
 	if (!file) {
@@ -143,6 +144,12 @@ static void op_0x00E0(Chip8State* state)
 	for (int i = 0; i < SCREEN_SIZE; i++) {
 		state->video[i] = PIXEL_OFF;
 	}
+}
+
+static void op_Ox00EE(Chip8State* state)
+{
+	state->program_counter = 
+		state->stack[--state->stack_pointer];
 }
 
 static void op_0x1NNN(Chip8State* state)
