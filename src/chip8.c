@@ -158,6 +158,14 @@ static void op_0x1NNN(Chip8State* state)
 	state->program_counter = address;
 }
 
+static void op_0x2NNN(Chip8State* state)
+{
+	uint16_t address = state->opcode & 0x0FFF;
+
+	state->stack[state->stack_pointer++] = state->program_counter;
+	state->program_counter = address;
+}
+
 static void op_0x6XNN(Chip8State* state)
 {
 	uint8_t vx = (state->opcode & 0x0F00) >> 8;
@@ -178,6 +186,26 @@ static void op_OxANNN(Chip8State* state)
 {
 	uint16_t address = state->opcode & 0x0FFF;
 	state->index = address;
+}
+
+static void op_Ox3XKK(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0xF00) >> 8;
+	uint8_t byte = state->opcode & 0x00FF;
+
+	if (state->registers[Vx] == byte) {
+		state->program_counter += 2;
+	}
+}
+
+static void op_Ox4XKK(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0xF00) >> 8;
+	uint8_t byte = state->opcode & 0x00FF;
+
+	if (state->registers[Vx] != byte) {
+		state->program_counter += 2;
+	}
 }
 
 static void op_OxDXYN(Chip8State* state)
@@ -243,6 +271,9 @@ void chip8_cycle(Chip8State* state)
 					op_0x00E0(state);
 					break;
 
+				case 0x00EE:
+					op_Ox00EE(state);
+
 				default:
 					printf("Unknown opcode: %04X\n", state->opcode);
 					break;
@@ -250,26 +281,35 @@ void chip8_cycle(Chip8State* state)
 		} break;
 
 		case 0x1000:
-		{
 			op_0x1NNN(state);
-		} break;
+			break;
+
+		case 0x2000: 
+			op_0x2NNN(state); 
+			break;
+
+		case 0x3000:
+			op_Ox3XKK(state);
+			break;
+
+		case 0x4000:
+			op_Ox4XKK(state);
+			break;
 
 		case 0x6000:
-		{
 			op_0x6XNN(state);
-		} break;
+			break;
 
 		case 0x7000:
-		{
 			op_0x7XNN(state);
-		} break;
+			break;
+
 		case 0xA000:
-		{
 			op_OxANNN(state);
-		} break;
+			break;
+
 		case 0xD000:
-		{
 			op_OxDXYN(state);
-		}
+			break;
 	}
 }
