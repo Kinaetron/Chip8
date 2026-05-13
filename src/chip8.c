@@ -146,7 +146,7 @@ static void op_0x00E0(Chip8State* state)
 	}
 }
 
-static void op_Ox00EE(Chip8State* state)
+static void op_0x00EE(Chip8State* state)
 {
 	state->program_counter = 
 		state->stack[--state->stack_pointer];
@@ -182,13 +182,13 @@ static void op_0x7XNN(Chip8State* state)
 	state->registers[vx] += value;
 }
 
-static void op_OxANNN(Chip8State* state)
+static void op_0xANNN(Chip8State* state)
 {
 	uint16_t address = state->opcode & 0x0FFF;
 	state->index = address;
 }
 
-static void op_Ox3XKK(Chip8State* state)
+static void op_0x3XNN(Chip8State* state)
 {
 	uint8_t Vx = (state->opcode & 0xF00) >> 8;
 	uint8_t byte = state->opcode & 0x00FF;
@@ -198,7 +198,7 @@ static void op_Ox3XKK(Chip8State* state)
 	}
 }
 
-static void op_Ox4XKK(Chip8State* state)
+static void op_0x4XNN(Chip8State* state)
 {
 	uint8_t Vx = (state->opcode & 0xF00) >> 8;
 	uint8_t byte = state->opcode & 0x00FF;
@@ -208,7 +208,112 @@ static void op_Ox4XKK(Chip8State* state)
 	}
 }
 
-static void op_OxDXYN(Chip8State* state)
+static void op_0x5XY0(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode && 0xFF00) >> 8;
+	uint8_t Vy = (state->opcode && 0xFF00) >> 4;
+
+	if (state->registers[Vx] == state->registers[Vy]) {
+		state->program_counter += 2;
+	}
+}
+
+static void op_0x8XY0(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	state->registers[Vx] = state->registers[Vy];
+}
+
+static void op_0x8XY1(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	state->registers[Vx] |= state->registers[Vy];
+}
+
+static void op_0x8XY2(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	state->registers[Vx] &= state->registers[Vy];
+}
+
+static void op_0x8XY3(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	state->registers[Vx] ^= state->registers[Vy];
+}
+
+static void op_0x8XY4(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	uint16_t sum = state->registers[Vx] + state->registers[Vy];
+
+	if (sum > 255) {
+		state->registers[0xF] = 1;
+	}
+	else {
+		state->registers[0xF] = 0;
+	}
+
+	state->registers[Vx] = sum & 0xFF;
+}
+
+static void op_0x8XY5(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	if (state->registers[Vx] > state->registers[Vy]) {
+		state->registers[0xF] = 1;
+	}
+	else {
+		state->registers[0xF] = 0;
+	}
+
+	state->registers[Vx] -= state->registers[Vy];
+}
+
+static void op_0x8XY6(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+
+	state->registers[0xF] = (state->registers[Vx] & 0x1);
+	state->registers[Vx] >>= 1;
+}
+
+static void op_0x8XY7(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	if (state->registers[Vy] > state->registers[Vx]) {
+		state->registers[0xF] = 1;
+	}
+	else {
+		state->registers[0xF] = 0;
+	}
+
+	state->registers[Vx] = state->registers[Vy] - state->registers[Vx];
+}
+
+static void op_0x8XYE(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+
+	state->registers[0xF] = (state->registers[Vx] && 0x80) >> 7;
+	state->registers[Vx] <<= 1;
+}
+
+static void op_0xDXYN(Chip8State* state)
 {
 	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
@@ -272,7 +377,7 @@ void chip8_cycle(Chip8State* state)
 					break;
 
 				case 0x00EE:
-					op_Ox00EE(state);
+					op_0x00EE(state);
 
 				default:
 					printf("Unknown opcode: %04X\n", state->opcode);
@@ -289,11 +394,15 @@ void chip8_cycle(Chip8State* state)
 			break;
 
 		case 0x3000:
-			op_Ox3XKK(state);
+			op_0x3XNN(state);
 			break;
 
 		case 0x4000:
-			op_Ox4XKK(state);
+			op_0x4XNN(state);
+			break;
+
+		case 0x5000:
+			op_0x5XY0(state);
 			break;
 
 		case 0x6000:
@@ -304,12 +413,52 @@ void chip8_cycle(Chip8State* state)
 			op_0x7XNN(state);
 			break;
 
+		case 0x8000:
+			switch (state->opcode & 0x000F)
+			{
+				case 0x0:
+					op_0x8XY0(state);
+					break;
+
+				case 0x1:
+					op_0x8XY1(state);
+					break;
+
+				case 0x2:
+					op_0x8XY2(state);
+					break;
+
+				case 0x3:
+					op_0x8XY3(state);
+					break;
+				
+				case 0x4:
+					op_0x8XY4(state);
+					break;
+				
+				case 0x5:
+					op_0x8XY5(state);
+					break;
+
+				case 0x6:
+					op_0x8XY6(state);
+					break;
+
+				case 0x7:
+					op_0x8XY7(state);
+					break;
+				
+				case 0xE:
+					op_0x8XYE(state);
+					break;
+			}
+
 		case 0xA000:
-			op_OxANNN(state);
+			op_0xANNN(state);
 			break;
 
 		case 0xD000:
-			op_OxDXYN(state);
+			op_0xDXYN(state);
 			break;
 	}
 }
