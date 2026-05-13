@@ -414,3 +414,13 @@ SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window
 
 	return SDL_APP_CONTINUE;
 }
+
+void DestroyRenderer(SDL_GPUDevice* device, GraphicsContext* context)
+{
+	SDL_ReleaseGPUGraphicsPipeline(device, context->pipeline);
+	SDL_ReleaseGPUBuffer(device, context->vertexBuffer);
+	SDL_ReleaseGPUBuffer(device, context->indexBuffer);
+	SDL_ReleaseGPUTexture(device, context->screenTexture);
+	SDL_ReleaseGPUTransferBuffer(device, context->transferBuffer);
+	SDL_ReleaseGPUSampler(device, context->sampler);
+}

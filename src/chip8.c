@@ -414,44 +414,46 @@ void chip8_cycle(Chip8State* state)
 			break;
 
 		case 0x8000:
+		{
 			switch (state->opcode & 0x000F)
 			{
-				case 0x0:
-					op_0x8XY0(state);
-					break;
+			case 0x0:
+				op_0x8XY0(state);
+				break;
 
-				case 0x1:
-					op_0x8XY1(state);
-					break;
+			case 0x1:
+				op_0x8XY1(state);
+				break;
 
-				case 0x2:
-					op_0x8XY2(state);
-					break;
+			case 0x2:
+				op_0x8XY2(state);
+				break;
 
-				case 0x3:
-					op_0x8XY3(state);
-					break;
-				
-				case 0x4:
-					op_0x8XY4(state);
-					break;
-				
-				case 0x5:
-					op_0x8XY5(state);
-					break;
+			case 0x3:
+				op_0x8XY3(state);
+				break;
 
-				case 0x6:
-					op_0x8XY6(state);
-					break;
+			case 0x4:
+				op_0x8XY4(state);
+				break;
 
-				case 0x7:
-					op_0x8XY7(state);
-					break;
-				
-				case 0xE:
-					op_0x8XYE(state);
-					break;
+			case 0x5:
+				op_0x8XY5(state);
+				break;
+
+			case 0x6:
+				op_0x8XY6(state);
+				break;
+
+			case 0x7:
+				op_0x8XY7(state);
+				break;
+
+			case 0xE:
+				op_0x8XYE(state);
+				break;
 			}
+		} break;
 
 		case 0xA000:
 			op_0xANNN(state);

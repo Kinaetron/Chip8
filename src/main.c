@@ -11,6 +11,8 @@
 #include "ui.h";
 #include "context.h"
 #include "renderer.h"
+#include <SDL3/SDL_gpu.h>
+#include <SDL3/SDL_video.h>
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 {
@@ -74,4 +76,16 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result) 
 {
+	Context* context = (Context*)appstate;
+
+	if (context) 
+	{
+		DestroyRenderer(context->gpu_device, context->graphicsContext);
+
+		free(context->graphicsContext);
+		SDL_DestroyGPUDevice(context->gpu_device);
+		SDL_DestroyWindow(context->window);
+
+		free(context);
+	}
 }

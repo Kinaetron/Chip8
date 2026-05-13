@@ -43,4 +43,8 @@ SDL_AppResult Render(
 	SDL_Window* window,
 	Chip8State* state);
 
+void DestroyRenderer(
+	SDL_GPUDevice* device,
+	GraphicsContext* context);
+
 #endif
