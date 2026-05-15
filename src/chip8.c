@@ -1,6 +1,9 @@
 #include "chip8.h"
 
+#include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 
@@ -39,6 +42,8 @@ void chip8_state_initialization(Chip8State* state)
 	memcpy(state->memory, chip8_fontset, FONT_SIZE * sizeof(uint8_t));
 
 	state->program_counter = CHIP8_START_ADDRESS;
+
+	srand((unsigned int)time(NULL));
 }
 
 bool chip8_load_rom(Chip8State* state, const char* filePath)
@@ -313,6 +318,30 @@ static void op_0x8XYE(Chip8State* state)
 	state->registers[Vx] <<= 1;
 }
 
+static void op_0x9XY0(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
+
+	if (state->registers[Vx] != state->registers[Vy]) {
+		state->program_counter += 2;
+	}
+}
+
+static void op_0xBNNN(Chip8State* state)
+{
+	uint16_t address = state->opcode & 0x0FFF;
+	state->program_counter = state->registers[0] + address;
+}
+
+static void op_0xCXNN(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t byte = state->opcode & 0x00FF;
+
+	state->registers[Vx] = (rand() % 256) & byte;
+}
+
 static void op_0xDXYN(Chip8State* state)
 {
 	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
@@ -352,6 +381,47 @@ static void op_0xDXYN(Chip8State* state)
 			}
 		}
 	}
+}
+
+static void op_0xEX9E(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t key = state->registers[Vx];
+
+	if (state->keypad[key]) {
+		state->program_counter += 2;
+	}
+}
+
+static void op_0xEXA1(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t key = state->registers[Vx];
+
+	if (!state->keypad[key]) {
+		state->program_counter += 2;
+	}
+}
+
+static void op_0xFX07(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	state->registers[Vx] = state->delay_timer;
+}
+
+static void op_0xFX0A(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	for (int i = 0; i < 16; i++)
+	{
+		if (state->keypad[i]) 
+		{
+			state->registers[Vx] = i;
+			return;
+		}
+	}
+
+	state->program_counter -= 2;
 }
 
 void chip8_cycle(Chip8State* state)
@@ -455,12 +525,52 @@ void chip8_cycle(Chip8State* state)
 			}
 		} break;
 
+		case 0x9000:
+			op_0x9XY0(state);
+
 		case 0xA000:
 			op_0xANNN(state);
+			break;
+
+		case 0xB000:
+			op_0xBNNN(state);
+			break;
+
+		case 0xC000:
+			op_0xCXNN(state);
 			break;
 
 		case 0xD000:
 			op_0xDXYN(state);
 			break;
+
+		case 0xE000:
+		{
+			switch (state->opcode & 0x00FF)
+			{
+				case 0x9E:
+					op_0xEX9E(state);
+					break;
+
+				case 0xA1:
+					op_0xEXA1(state);
+					break;
+			}
+
+		}break;
+
+		case 0xF000:
+		{
+			switch (state->opcode & 0x00FF)
+			{
+				case 0x07: 
+					op_0xFX07(state); 
+					break;
+
+				case 0x0A:
+					op_0xFX0A(state);
+					break;
+			}
+		} break;
 	}
 }
