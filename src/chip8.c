@@ -3,9 +3,11 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
+#include <stdint.h>
 
 #define FONT_SIZE 80
 #define PIXEL_ON  (Pixel){255,255,255,255}
@@ -171,20 +173,18 @@ static void op_0x2NNN(Chip8State* state)
 	state->program_counter = address;
 }
 
-static void op_0x6XNN(Chip8State* state)
+static void op_0x6XNN(Chip8State* state, uint8_t Vx)
 {
-	uint8_t vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t value = state->opcode & 0x00FF;
 
-	state->registers[vx] = value;
+	state->registers[Vx] = value;
 }
 
-static void op_0x7XNN(Chip8State* state)
+static void op_0x7XNN(Chip8State* state, uint8_t Vx)
 {
-	uint8_t vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t value = state->opcode & 0x00FF;
 
-	state->registers[vx] += value;
+	state->registers[Vx] += value;
 }
 
 static void op_0xANNN(Chip8State* state)
@@ -193,9 +193,8 @@ static void op_0xANNN(Chip8State* state)
 	state->index = address;
 }
 
-static void op_0x3XNN(Chip8State* state)
+static void op_0x3XNN(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0xF00) >> 8;
 	uint8_t byte = state->opcode & 0x00FF;
 
 	if (state->registers[Vx] == byte) {
@@ -203,9 +202,8 @@ static void op_0x3XNN(Chip8State* state)
 	}
 }
 
-static void op_0x4XNN(Chip8State* state)
+static void op_0x4XNN(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0xF00) >> 8;
 	uint8_t byte = state->opcode & 0x00FF;
 
 	if (state->registers[Vx] != byte) {
@@ -213,53 +211,35 @@ static void op_0x4XNN(Chip8State* state)
 	}
 }
 
-static void op_0x5XY0(Chip8State* state)
+static void op_0x5XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode && 0xFF00) >> 8;
-	uint8_t Vy = (state->opcode && 0xFF00) >> 4;
-
 	if (state->registers[Vx] == state->registers[Vy]) {
 		state->program_counter += 2;
 	}
 }
 
-static void op_0x8XY0(Chip8State* state)
+static void op_0x8XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	state->registers[Vx] = state->registers[Vy];
 }
 
-static void op_0x8XY1(Chip8State* state)
+static void op_0x8XY1(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	state->registers[Vx] |= state->registers[Vy];
 }
 
-static void op_0x8XY2(Chip8State* state)
+static void op_0x8XY2(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	state->registers[Vx] &= state->registers[Vy];
 }
 
-static void op_0x8XY3(Chip8State* state)
+static void op_0x8XY3(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	state->registers[Vx] ^= state->registers[Vy];
 }
 
-static void op_0x8XY4(Chip8State* state)
+static void op_0x8XY4(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	uint16_t sum = state->registers[Vx] + state->registers[Vy];
 
 	if (sum > 255) {
@@ -272,11 +252,8 @@ static void op_0x8XY4(Chip8State* state)
 	state->registers[Vx] = sum & 0xFF;
 }
 
-static void op_0x8XY5(Chip8State* state)
+static void op_0x8XY5(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	if (state->registers[Vx] > state->registers[Vy]) {
 		state->registers[0xF] = 1;
 	}
@@ -287,19 +264,14 @@ static void op_0x8XY5(Chip8State* state)
 	state->registers[Vx] -= state->registers[Vy];
 }
 
-static void op_0x8XY6(Chip8State* state)
+static void op_0x8XY6(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-
 	state->registers[0xF] = (state->registers[Vx] & 0x1);
 	state->registers[Vx] >>= 1;
 }
 
-static void op_0x8XY7(Chip8State* state)
+static void op_0x8XY7(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	if (state->registers[Vy] > state->registers[Vx]) {
 		state->registers[0xF] = 1;
 	}
@@ -310,19 +282,14 @@ static void op_0x8XY7(Chip8State* state)
 	state->registers[Vx] = state->registers[Vy] - state->registers[Vx];
 }
 
-static void op_0x8XYE(Chip8State* state)
+static void op_0x8XYE(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-
-	state->registers[0xF] = (state->registers[Vx] && 0x80) >> 7;
+	state->registers[0xF] = (state->registers[Vx] & 0x80) >> 7;
 	state->registers[Vx] <<= 1;
 }
 
-static void op_0x9XY0(Chip8State* state)
+static void op_0x9XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
-
 	if (state->registers[Vx] != state->registers[Vy]) {
 		state->program_counter += 2;
 	}
@@ -334,18 +301,15 @@ static void op_0xBNNN(Chip8State* state)
 	state->program_counter = state->registers[0] + address;
 }
 
-static void op_0xCXNN(Chip8State* state)
+static void op_0xCXNN(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t byte = state->opcode & 0x00FF;
 
 	state->registers[Vx] = (rand() % 256) & byte;
 }
 
-static void op_0xDXYN(Chip8State* state)
+static void op_0xDXYN(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
 	uint8_t height = state->opcode & 0x000F;
 
 	uint8_t xPosition = state->registers[Vx] % SCREEN_WIDTH;
@@ -383,9 +347,8 @@ static void op_0xDXYN(Chip8State* state)
 	}
 }
 
-static void op_0xEX9E(Chip8State* state)
+static void op_0xEX9E(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t key = state->registers[Vx];
 
 	if (state->keypad[key]) {
@@ -393,9 +356,8 @@ static void op_0xEX9E(Chip8State* state)
 	}
 }
 
-static void op_0xEXA1(Chip8State* state)
+static void op_0xEXA1(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t key = state->registers[Vx];
 
 	if (!state->keypad[key]) {
@@ -403,15 +365,13 @@ static void op_0xEXA1(Chip8State* state)
 	}
 }
 
-static void op_0xFX07(Chip8State* state)
+static void op_0xFX07(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	state->registers[Vx] = state->delay_timer;
 }
 
-static void op_0xFX0A(Chip8State* state)
+static void op_0xFX0A(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	for (int i = 0; i < 16; i++)
 	{
 		if (state->keypad[i]) 
@@ -424,35 +384,27 @@ static void op_0xFX0A(Chip8State* state)
 	state->program_counter -= 2;
 }
 
-static void op_0xFX15(Chip8State* state)
-{
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+static void op_0xFX15(Chip8State* state, uint8_t Vx) {
 	state->delay_timer = state->registers[Vx];
 }
 
-static void op_OxFX18(Chip8State* state)
-{
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+static void op_OxFX18(Chip8State* state, uint8_t Vx) {
 	state->sound_timer = state->registers[Vx];
 }
 
-static void op_OxFX1E(Chip8State* state)
-{
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+static void op_OxFX1E(Chip8State* state, uint8_t Vx) {
 	state->index += state->registers[Vx];
 }
 
-static void op_0xFX29(Chip8State* state)
+static void op_0xFX29(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t digit = state->registers[Vx];
 
 	state->index = (5 * digit);
 }
 
-static void op_0xFX33(Chip8State* state)
+static void op_0xFX33(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
 	uint8_t value = state->registers[Vx];
 
 	state->memory[state->index + 2] = value % 10;
@@ -464,19 +416,15 @@ static void op_0xFX33(Chip8State* state)
 	state->memory[state->index] = value % 10;
 }
 
-static void op_0xFX55(Chip8State* state)
+static void op_0xFX55(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-
 	for (uint8_t i = 0; i <= Vx; i++) {
 		state->memory[state->index + i] = state->registers[i];
 	}
 }
 
-static void op_0xFX65(Chip8State* state)
+static void op_0xFX65(Chip8State* state, uint8_t Vx)
 {
-	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
-
 	for (uint8_t i = 0; i <= Vx; i++) {
 		state->memory[i] = state->registers[i];
 	}
@@ -493,6 +441,9 @@ void chip8_cycle(Chip8State* state)
 		 state->memory[state->program_counter + 1];
 
 	state->program_counter += 2;
+
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t Vy = (state->opcode & 0x00F0) >> 4;
 
 	switch (state->opcode & 0xF000)
 	{
@@ -522,23 +473,23 @@ void chip8_cycle(Chip8State* state)
 			break;
 
 		case 0x3000:
-			op_0x3XNN(state);
+			op_0x3XNN(state, Vx);
 			break;
 
 		case 0x4000:
-			op_0x4XNN(state);
+			op_0x4XNN(state, Vx);
 			break;
 
 		case 0x5000:
-			op_0x5XY0(state);
+			op_0x5XY0(state, Vx, Vy);
 			break;
 
 		case 0x6000:
-			op_0x6XNN(state);
+			op_0x6XNN(state, Vx);
 			break;
 
 		case 0x7000:
-			op_0x7XNN(state);
+			op_0x7XNN(state, Vx);
 			break;
 
 		case 0x8000:
@@ -546,45 +497,46 @@ void chip8_cycle(Chip8State* state)
 			switch (state->opcode & 0x000F)
 			{
 			case 0x0:
-				op_0x8XY0(state);
+				op_0x8XY0(state, Vx, Vy);
 				break;
 
 			case 0x1:
-				op_0x8XY1(state);
+				op_0x8XY1(state, Vx, Vy);
 				break;
 
 			case 0x2:
-				op_0x8XY2(state);
+				op_0x8XY2(state, Vx, Vy);
 				break;
 
 			case 0x3:
-				op_0x8XY3(state);
+				op_0x8XY3(state, Vx, Vy);
 				break;
 
 			case 0x4:
-				op_0x8XY4(state);
+				op_0x8XY4(state, Vx, Vy);
 				break;
 
 			case 0x5:
-				op_0x8XY5(state);
+				op_0x8XY5(state, Vx, Vy);
 				break;
 
 			case 0x6:
-				op_0x8XY6(state);
+				op_0x8XY6(state, Vx);
 				break;
 
 			case 0x7:
-				op_0x8XY7(state);
+				op_0x8XY7(state, Vx, Vy);
 				break;
 
 			case 0xE:
-				op_0x8XYE(state);
+				op_0x8XYE(state, Vx);
 				break;
 			}
 		} break;
 
 		case 0x9000:
-			op_0x9XY0(state);
+			op_0x9XY0(state, Vx, Vy);
+			break;
 
 		case 0xA000:
 			op_0xANNN(state);
@@ -595,11 +547,11 @@ void chip8_cycle(Chip8State* state)
 			break;
 
 		case 0xC000:
-			op_0xCXNN(state);
+			op_0xCXNN(state, Vx);
 			break;
 
 		case 0xD000:
-			op_0xDXYN(state);
+			op_0xDXYN(state, Vx, Vy);
 			break;
 
 		case 0xE000:
@@ -607,11 +559,11 @@ void chip8_cycle(Chip8State* state)
 			switch (state->opcode & 0x00FF)
 			{
 				case 0x9E:
-					op_0xEX9E(state);
+					op_0xEX9E(state, Vx);
 					break;
 
 				case 0xA1:
-					op_0xEXA1(state);
+					op_0xEXA1(state, Vx);
 					break;
 			}
 
@@ -622,39 +574,39 @@ void chip8_cycle(Chip8State* state)
 			switch (state->opcode & 0x00FF)
 			{
 				case 0x07: 
-					op_0xFX07(state); 
+					op_0xFX07(state, Vx);
 					break;
 
 				case 0x0A:
-					op_0xFX0A(state);
+					op_0xFX0A(state, Vx);
 					break;
 
 				case 0x15:
-					op_0xFX15(state);
+					op_0xFX15(state, Vx);
 					break;
 
 				case 0x18:
-					op_OxFX18(state);
+					op_OxFX18(state, Vx);
 					break;
 
 				case 0x1E:
-					op_OxFX1E(state);
+					op_OxFX1E(state, Vx);
 					break;
 
 				case 0x29:
-					op_0xFX29(state);
+					op_0xFX29(state, Vx);
 					break;
 
 				case 0x33:
-					op_0xFX33(state);
+					op_0xFX33(state, Vx);
 					break;
 
 				case 0x55:
-					op_0xFX55(state);
+					op_0xFX55(state, Vx);
 					break;
 
 				case 0x65:
-					op_0xFX65(state);
+					op_0xFX65(state, Vx);
 					break;
 			}
 		} break;
