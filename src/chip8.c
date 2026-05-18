@@ -424,6 +424,64 @@ static void op_0xFX0A(Chip8State* state)
 	state->program_counter -= 2;
 }
 
+static void op_0xFX15(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	state->delay_timer = state->registers[Vx];
+}
+
+static void op_OxFX18(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	state->sound_timer = state->registers[Vx];
+}
+
+static void op_OxFX1E(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	state->index += state->registers[Vx];
+}
+
+static void op_0xFX29(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t digit = state->registers[Vx];
+
+	state->index = (5 * digit);
+}
+
+static void op_0xFX33(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+	uint8_t value = state->registers[Vx];
+
+	state->memory[state->index + 2] = value % 10;
+	value /= 10;
+
+	state->memory[state->index + 1] = value % 10;
+	value /= 10;
+
+	state->memory[state->index] = value % 10;
+}
+
+static void op_0xFX55(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+
+	for (uint8_t i = 0; i <= Vx; i++) {
+		state->memory[state->index + i] = state->registers[i];
+	}
+}
+
+static void op_0xFX65(Chip8State* state)
+{
+	uint8_t Vx = (state->opcode & 0x0F00) >> 8;
+
+	for (uint8_t i = 0; i <= Vx; i++) {
+		state->memory[i] = state->registers[i];
+	}
+}
+
 void chip8_cycle(Chip8State* state)
 {
 	if (!state->rom_loaded) {
@@ -569,6 +627,34 @@ void chip8_cycle(Chip8State* state)
 
 				case 0x0A:
 					op_0xFX0A(state);
+					break;
+
+				case 0x15:
+					op_0xFX15(state);
+					break;
+
+				case 0x18:
+					op_OxFX18(state);
+					break;
+
+				case 0x1E:
+					op_OxFX1E(state);
+					break;
+
+				case 0x29:
+					op_0xFX29(state);
+					break;
+
+				case 0x33:
+					op_0xFX33(state);
+					break;
+
+				case 0x55:
+					op_0xFX55(state);
+					break;
+
+				case 0x65:
+					op_0xFX65(state);
 					break;
 			}
 		} break;
