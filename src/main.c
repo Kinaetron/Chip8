@@ -8,7 +8,7 @@
 
 #include <malloc.h>
 
-#include "ui.h";
+#include "ui.h"
 #include "context.h"
 #include "renderer.h"
 #include <SDL3/SDL_gpu.h>

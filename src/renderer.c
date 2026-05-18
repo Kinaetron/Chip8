@@ -123,23 +123,6 @@ SDL_AppResult InitializeRenderer(Context* context)
 		return SDL_APP_FAILURE;
 	}
 
-	SDL_SetWindowPosition(context->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-	SDL_ShowWindow(context->window);
-
-	context->gpu_device = SDL_CreateGPUDevice(
-		SDL_GPU_SHADERFORMAT_SPIRV |
-		SDL_GPU_SHADERFORMAT_DXIL |
-		SDL_GPU_SHADERFORMAT_MSL |
-		SDL_GPU_SHADERFORMAT_METALLIB,
-		true,
-		NULL);
-
-	if (context->gpu_device == NULL)
-	{
-		SDL_Log("Error: SDL_CreateGPUDevice: %s", SDL_GetError());
-		return SDL_APP_FAILURE;
-	}
-
 	if (!SDL_ClaimWindowForGPUDevice(context->gpu_device, context->window))
 	{
 		SDL_Log("Error: SDL_CreateGPUDevice Window Claim: %s", SDL_GetError());
