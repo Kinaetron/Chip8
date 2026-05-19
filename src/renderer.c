@@ -1,3 +1,5 @@
+#include "ui.h"
+#include "context.h"
 #include "renderer.h"
 
 SDL_GPUShader* LoadShader(
@@ -85,23 +87,71 @@ SDL_GPUShader* LoadShader(
 	return shader;
 }
 
-int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContext* context)
+SDL_AppResult InitializeRenderer(Context* context)
 {
-	SDL_GPUShader* vertexShader = LoadShader(device, "chip8.vert", 0, 0, 0, 0);
+	SDL_SetAppMetadata("Chip 8 Emulator", "1.0", "com.chip8-emulator");
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
+	{
+		SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+	SDL_WindowFlags window_flags = SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
+	context->window = SDL_CreateWindow("Chip 8 Emulator", (int)(640 * main_scale), (int)(320 * main_scale) + 15, window_flags);
+	if (context->window == NULL)
+	{
+		SDL_Log("Couldn't create window: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	SDL_SetWindowPosition(context->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	SDL_ShowWindow(context->window);
+
+	context->gpu_device = SDL_CreateGPUDevice(
+		SDL_GPU_SHADERFORMAT_SPIRV |
+		SDL_GPU_SHADERFORMAT_DXIL |
+		SDL_GPU_SHADERFORMAT_MSL |
+		SDL_GPU_SHADERFORMAT_METALLIB,
+		true,
+		NULL);
+
+	if (context->gpu_device == NULL)
+	{
+		SDL_Log("Error: SDL_CreateGPUDevice: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	if (!SDL_ClaimWindowForGPUDevice(context->gpu_device, context->window))
+	{
+		SDL_Log("Error: SDL_CreateGPUDevice Window Claim: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	SDL_SetGPUSwapchainParameters(
+		context->gpu_device,
+		context->window,
+		SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
+		SDL_GPU_PRESENTMODE_VSYNC);
+
+	ui_initalization(main_scale, context->window, context->gpu_device);
+
+	SDL_GPUShader* vertexShader = LoadShader(context->gpu_device, "chip8.vert", 0, 0, 0, 0);
 	if (vertexShader == NULL)
 	{
 		SDL_Log("Failed to create vertex shader %s", SDL_GetError());
 		return -1;
 	}
 
-	SDL_GPUShader* fragmentShader = LoadShader(device, "chip8.frag", 1, 0, 0, 0);
+	SDL_GPUShader* fragmentShader = LoadShader(context->gpu_device, "chip8.frag", 1, 0, 0, 0);
 	if (fragmentShader == NULL)
 	{
 		SDL_Log("Failed to create fragment shader %s", SDL_GetError());
 		return -1;
 	}
 
-	SDL_GPUTextureFormat swapchainFormat = SDL_GetGPUSwapchainTextureFormat(device, window);
+	SDL_GPUTextureFormat swapchainFormat = SDL_GetGPUSwapchainTextureFormat(context->gpu_device, context->window);
 	if (swapchainFormat == SDL_GPU_TEXTUREFORMAT_INVALID) 
 	{
 		SDL_Log("Swapchain format is invalid! Did you forget to claim the window?");
@@ -142,17 +192,17 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	};
 
 
-	context->pipeline = SDL_CreateGPUGraphicsPipeline(device, &pipelineCreateInfo);
-	if (context->pipeline == NULL)
+	context->graphicsContext->pipeline = SDL_CreateGPUGraphicsPipeline(context->gpu_device, &pipelineCreateInfo);
+	if (context->graphicsContext->pipeline == NULL)
 	{
 		SDL_Log("Failed to create pipeline!");
 		return -1;
 	}
 
-	SDL_ReleaseGPUShader(device, vertexShader);
-	SDL_ReleaseGPUShader(device, fragmentShader);
+	SDL_ReleaseGPUShader(context->gpu_device, vertexShader);
+	SDL_ReleaseGPUShader(context->gpu_device, fragmentShader);
 
-	context->sampler = SDL_CreateGPUSampler(device, &(SDL_GPUSamplerCreateInfo)
+	context->graphicsContext->sampler = SDL_CreateGPUSampler(context->gpu_device, &(SDL_GPUSamplerCreateInfo)
 	{
 		.min_filter = SDL_GPU_FILTER_NEAREST,
 		.mag_filter = SDL_GPU_FILTER_NEAREST,
@@ -162,24 +212,24 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 		.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
 	});
 
-	context->vertexBuffer = SDL_CreateGPUBuffer(device, &(SDL_GPUBufferCreateInfo) 
+	context->graphicsContext->vertexBuffer = SDL_CreateGPUBuffer(context->gpu_device, &(SDL_GPUBufferCreateInfo)
 	{
 		.usage = SDL_GPU_BUFFERUSAGE_VERTEX,
 		.size = sizeof(PositionTextureVertex) * 4
 	});
 
 	SDL_SetGPUBufferName(
-		device,
-		context->vertexBuffer,
+		context->gpu_device,
+		context->graphicsContext->vertexBuffer,
 		"Chip 8 Screen Buffer"
 	);
 
-	context->indexBuffer = SDL_CreateGPUBuffer(device, &(SDL_GPUBufferCreateInfo){
+	context->graphicsContext->indexBuffer = SDL_CreateGPUBuffer(context->gpu_device, &(SDL_GPUBufferCreateInfo){
 		.usage = SDL_GPU_BUFFERUSAGE_INDEX,
 		.size = sizeof(uint16_t) * 6
 	});
 	
-	context->screenTexture = SDL_CreateGPUTexture(device, &(SDL_GPUTextureCreateInfo){
+	context->graphicsContext->screenTexture = SDL_CreateGPUTexture(context->gpu_device, &(SDL_GPUTextureCreateInfo){
 		.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
 		.type = SDL_GPU_TEXTURETYPE_2D,
 		.width = CHIP8_SCREEN_WIDTH,
@@ -190,20 +240,20 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	});
 
 	SDL_SetGPUTextureName(
-		device,
-		context->screenTexture,
+		context->gpu_device,
+		context->graphicsContext->screenTexture,
 		"Screen Texture"
 	);
 
 	SDL_GPUTransferBuffer* bufferTransferBuffer = SDL_CreateGPUTransferBuffer(
-		device,
+		context->gpu_device,
 		&(SDL_GPUTransferBufferCreateInfo) {
 		.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
 			.size = (sizeof(PositionTextureVertex) * 4) + (sizeof(Uint16) * 6)
 	});
 
 	PositionTextureVertex* transferData = SDL_MapGPUTransferBuffer(
-		device,
+		context->gpu_device,
 		bufferTransferBuffer,
 		false
 	);
@@ -221,9 +271,9 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	indexData[4] = 2; 
 	indexData[5] = 3;
 
-	SDL_UnmapGPUTransferBuffer(device, bufferTransferBuffer);
+	SDL_UnmapGPUTransferBuffer(context->gpu_device, bufferTransferBuffer);
 
-	SDL_GPUCommandBuffer* uploadCommandBuffer = SDL_AcquireGPUCommandBuffer(device);
+	SDL_GPUCommandBuffer* uploadCommandBuffer = SDL_AcquireGPUCommandBuffer(context->gpu_device);
 	SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(uploadCommandBuffer);
 
 	SDL_UploadToGPUBuffer(
@@ -233,7 +283,7 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 			.offset = 0
 	},
 		& (SDL_GPUBufferRegion) {
-		.buffer = context->vertexBuffer,
+		.buffer = context->graphicsContext->vertexBuffer,
 			.offset = 0,
 			.size = sizeof(PositionTextureVertex) * 4
 	},
@@ -247,7 +297,7 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 			.offset = sizeof(PositionTextureVertex) * 4
 	},
 		& (SDL_GPUBufferRegion) {
-		.buffer = context->indexBuffer,
+		.buffer = context->graphicsContext->indexBuffer,
 			.offset = 0,
 			.size = sizeof(Uint16) * 6
 	},
@@ -256,10 +306,10 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 
 	SDL_EndGPUCopyPass(copyPass);
 	SDL_SubmitGPUCommandBuffer(uploadCommandBuffer);
-	SDL_ReleaseGPUTransferBuffer(device, bufferTransferBuffer);
+	SDL_ReleaseGPUTransferBuffer(context->gpu_device, bufferTransferBuffer);
 
-	context->transferBuffer = SDL_CreateGPUTransferBuffer(
-		device,
+	context->graphicsContext->transferBuffer = SDL_CreateGPUTransferBuffer(
+		context->gpu_device,
 		&(SDL_GPUTransferBufferCreateInfo){
 		.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
 			.size = CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT * sizeof(uint32_t)
@@ -267,10 +317,20 @@ int InitializeRenderer(SDL_GPUDevice* device, SDL_Window* window, GraphicsContex
 	return 0;
 }
 
-void UploadChip8Texture(SDL_GPUDevice* device, SDL_GPUCommandBuffer* commandBuffer, GraphicsContext* context, uint32_t* screen_data)
+SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window, Chip8State* state)
 {
+	SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
+
+	if (commandBuffer == NULL)
+	{
+		SDL_Log("AcquireGPUCommandBuffer failed: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	ImDrawData* draw_data = ui_renderer(state, window);
+
 	uint32_t* pixels = SDL_MapGPUTransferBuffer(device, context->transferBuffer, false);
-	SDL_memcpy(pixels, screen_data, CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT * sizeof(uint32_t));
+	SDL_memcpy(pixels, state->video, CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT * sizeof(uint32_t));
 	SDL_UnmapGPUTransferBuffer(device, context->transferBuffer);
 
 	SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
@@ -292,4 +352,58 @@ void UploadChip8Texture(SDL_GPUDevice* device, SDL_GPUCommandBuffer* commandBuff
 	);
 
 	SDL_EndGPUCopyPass(copyPass);
+
+	SDL_GPUTexture* swapchainTexture;
+
+	if (!SDL_WaitAndAcquireGPUSwapchainTexture(
+		commandBuffer,
+		window,
+		&swapchainTexture,
+		NULL,
+		NULL))
+	{
+		SDL_Log("WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
+	if (swapchainTexture != NULL)
+	{
+		ui_prepare_draw_data(draw_data, commandBuffer);
+
+		SDL_GPUColorTargetInfo target_info = { 0 };
+		target_info.texture = swapchainTexture;
+		target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+		target_info.store_op = SDL_GPU_STOREOP_STORE;
+		target_info.clear_color = (SDL_FColor){ 0.0f, 0.0f, 0.0f, 1.0f };
+		target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+		target_info.store_op = SDL_GPU_STOREOP_STORE;
+
+		SDL_GPURenderPass* renderPass =
+			SDL_BeginGPURenderPass(commandBuffer, &target_info, 1, NULL);
+
+		SDL_BindGPUGraphicsPipeline(renderPass, context->pipeline);
+		SDL_SetGPUViewport(renderPass, &(SDL_GPUViewport){ 0, 15, 640, 320 });
+		SDL_BindGPUVertexBuffers(renderPass, 0, &(SDL_GPUBufferBinding){.buffer = context->vertexBuffer, .offset = 0 }, 1);
+		SDL_BindGPUIndexBuffer(renderPass, &(SDL_GPUBufferBinding){.buffer = context->indexBuffer, .offset = 0 }, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+		SDL_BindGPUFragmentSamplers(renderPass, 0, &(SDL_GPUTextureSamplerBinding){.texture = context->screenTexture, .sampler = context->sampler }, 1);
+		SDL_DrawGPUIndexedPrimitives(renderPass, 6, 1, 0, 0, 0);
+
+		ui_render_draw_data(draw_data, commandBuffer, renderPass);
+
+		SDL_EndGPURenderPass(renderPass);
+	}
+
+	SDL_SubmitGPUCommandBuffer(commandBuffer);
+
+	return SDL_APP_CONTINUE;
+}
+
+void DestroyRenderer(SDL_GPUDevice* device, GraphicsContext* context)
+{
+	SDL_ReleaseGPUGraphicsPipeline(device, context->pipeline);
+	SDL_ReleaseGPUBuffer(device, context->vertexBuffer);
+	SDL_ReleaseGPUBuffer(device, context->indexBuffer);
+	SDL_ReleaseGPUTexture(device, context->screenTexture);
+	SDL_ReleaseGPUTransferBuffer(device, context->transferBuffer);
+	SDL_ReleaseGPUSampler(device, context->sampler);
 }

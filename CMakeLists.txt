@@ -17,20 +17,26 @@ target_link_libraries(cimgui_gpu PRIVATE SDL3::SDL3)
 
 file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS "shaders/source/*")
 
-add_executable(Chip8 
+add_executable(Chip8
+    src/ui.c 
     src/main.c
     src/chip8.c
-    src/renderer.c 
+    src/renderer.c
+    include/ui.h 
     include/chip8.h
+    include/context.h
     include/renderer.h
     ${SHADER_SOURCES}
 )
 
-source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES 
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES
+    src/ui.c 
     src/main.c 
     src/chip8.c
     src/renderer.c 
+    include/ui.h
     include/chip8.h
+    include/context.h
     include/renderer.h
     ${SHADER_SOURCES}
 )
