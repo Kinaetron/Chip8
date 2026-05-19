@@ -457,9 +457,6 @@ void chip8_cycle(Chip8State* state)
 
 				case 0x00EE:
 					op_0x00EE(state);
-
-				default:
-					printf("Unknown opcode: %04X\n", state->opcode);
 					break;
 			}
 		} break;
