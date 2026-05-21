@@ -425,8 +425,8 @@ static void op_0xFX55(Chip8State* state, uint8_t Vx)
 
 static void op_0xFX65(Chip8State* state, uint8_t Vx)
 {
-	for (uint8_t i = 0; i <= Vx; i++) {
-		state->memory[i] = state->registers[i];
+	for (uint8_t i = 0; i <= Vx; ++i) {
+		state->registers[i] = state->memory[state->index + i];
 	}
 }
 
