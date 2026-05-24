@@ -241,51 +241,42 @@ static void op_0x8XY3(Chip8State* state, uint8_t Vx, uint8_t Vy)
 static void op_0x8XY4(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
 	uint16_t sum = state->registers[Vx] + state->registers[Vy];
-
-	if (sum > 255) {
-		state->registers[0xF] = 1;
-	}
-	else {
-		state->registers[0xF] = 0;
-	}
+	uint8_t carry = (sum > 255) ? 1 : 0;
 
 	state->registers[Vx] = sum & 0xFF;
+	state->registers[0xF] = carry;
 }
 
 static void op_0x8XY5(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	if (state->registers[Vx] > state->registers[Vy]) {
-		state->registers[0xF] = 1;
-	}
-	else {
-		state->registers[0xF] = 0;
-	}
+	uint8_t vx = state->registers[Vx];
+	uint8_t vy = state->registers[Vy];
 
-	state->registers[Vx] -= state->registers[Vy];
+	state->registers[Vx] = vx - vy;
+	state->registers[0xF] = (vx >= vy) ? 1 : 0;
 }
 
 static void op_0x8XY6(Chip8State* state, uint8_t Vx)
 {
-	state->registers[0xF] = (state->registers[Vx] & 0x1);
-	state->registers[Vx] >>= 1;
+	uint8_t vx = state->registers[Vx];
+	state->registers[Vx] = vx >> 1;
+	state->registers[0xF] = vx & 0x1;
 }
 
 static void op_0x8XY7(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	if (state->registers[Vy] > state->registers[Vx]) {
-		state->registers[0xF] = 1;
-	}
-	else {
-		state->registers[0xF] = 0;
-	}
+	uint8_t vx = state->registers[Vx];
+	uint8_t vy = state->registers[Vy];
 
-	state->registers[Vx] = state->registers[Vy] - state->registers[Vx];
+	state->registers[Vx] = vy - vx;
+	state->registers[0xF] = (vy >= vx) ? 1 : 0;
 }
 
 static void op_0x8XYE(Chip8State* state, uint8_t Vx)
 {
-	state->registers[0xF] = (state->registers[Vx] & 0x80) >> 7;
-	state->registers[Vx] <<= 1;
+	uint8_t vx = state->registers[Vx];
+	state->registers[Vx] = vx << 1;
+	state->registers[0xF] = (vx & 0x80) >> 7;
 }
 
 static void op_0x9XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
