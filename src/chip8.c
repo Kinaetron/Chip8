@@ -77,71 +77,75 @@ bool chip8_load_rom(Chip8State* state, const char* filePath)
 
 void chip_input_state(SDL_Event* event, bool* inputState)
 {
+	if (event->type != SDL_EVENT_KEY_DOWN && event->type != SDL_EVENT_KEY_UP) {
+		return;
+	}
+
 	bool isPressed = (event->type == SDL_EVENT_KEY_DOWN);
 	switch (event->key.key)
 	{
 		case SDLK_1:
-			inputState[0] = isPressed;
-			break;
-
-		case SDLK_2:
 			inputState[1] = isPressed;
 			break;
 
-		case SDLK_3:
+		case SDLK_2:
 			inputState[2] = isPressed;
 			break;
 
-		case SDLK_4:
+		case SDLK_3:
 			inputState[3] = isPressed;
 			break;
 
-		case SDLK_Q:
+		case SDLK_4:
 			inputState[4] = isPressed;
 			break;
 
-		case SDLK_W:
+		case SDLK_Q:
 			inputState[5] = isPressed;
 			break;
 
-		case SDLK_E:
+		case SDLK_W:
 			inputState[6] = isPressed;
 			break;
 
-		case SDLK_R:
+		case SDLK_E:
 			inputState[7] = isPressed;
 			break;
 
-		case SDLK_A:
+		case SDLK_R:
 			inputState[8] = isPressed;
 			break;
 
-		case SDLK_S:
+		case SDLK_A:
 			inputState[9] = isPressed;
 			break;
 
-		case SDLK_D:
+		case SDLK_S:
 			inputState[10] = isPressed;
 			break;
 
-		case SDLK_F:
+		case SDLK_D:
 			inputState[11] = isPressed;
 			break;
 
-		case SDLK_Z:
+		case SDLK_F:
 			inputState[12] = isPressed;
 			break;
 
-		case SDLK_X:
+		case SDLK_Z:
 			inputState[13] = isPressed;
 			break;
 
-		case SDLK_C:
+		case SDLK_X:
 			inputState[14] = isPressed;
 			break;
 
-		case SDLK_V:
+		case SDLK_C:
 			inputState[15] = isPressed;
+			break;
+
+		case SDLK_V:
+			inputState[0] = isPressed;
 			break;
 	}
 }
@@ -363,16 +367,32 @@ static void op_0xFX07(Chip8State* state, uint8_t Vx)
 
 static void op_0xFX0A(Chip8State* state, uint8_t Vx)
 {
-	for (int i = 0; i < 16; i++)
+	if (!state->waiting_for_key)
 	{
-		if (state->keypad[i]) 
+		for (int i = 0; i < 16; i++)
 		{
-			state->registers[Vx] = i;
-			return;
+			if (state->keypad[i])
+			{
+				state->waiting_for_key = true;
+				state->waiting_for_key_register = Vx;
+				state->last_key_pressed = i;
+				state->program_counter -= 2;
+				return;
+			}
 		}
+
+		state->program_counter -= 2;
+		return;
 	}
 
-	state->program_counter -= 2;
+	if (!state->keypad[state->last_key_pressed])
+	{
+		state->registers[state->waiting_for_key_register] = state->last_key_pressed;
+		state->waiting_for_key = false;
+	}
+	else {
+		state->program_counter -= 2;
+	}
 }
 
 static void op_0xFX15(Chip8State* state, uint8_t Vx) {
