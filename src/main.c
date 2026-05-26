@@ -90,6 +90,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	uint64_t start_time = SDL_GetPerformanceCounter();
 	Context* context = (Context*)appstate;
 
+	context->state->draw_flag = false;
+
 	for (int i = 0; i < CYCLES_PER_FRAME; i++) {
 		chip8_cycle(context->state);
 	}

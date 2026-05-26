@@ -229,17 +229,23 @@ static void op_0x8XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
 
 static void op_0x8XY1(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	state->registers[Vx] |= state->registers[Vy];
+	uint8_t result = state->registers[Vx] | state->registers[Vy];
+	state->registers[Vx] = result;
+	state->registers[0xF] = 0;
 }
 
 static void op_0x8XY2(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	state->registers[Vx] &= state->registers[Vy];
+	uint8_t result = state->registers[Vx] & state->registers[Vy];
+	state->registers[Vx] = result;
+	state->registers[0xF] = 0;
 }
 
 static void op_0x8XY3(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	state->registers[Vx] ^= state->registers[Vy];
+	uint8_t result = state->registers[Vx] ^ state->registers[Vy];
+	state->registers[Vx] = result;
+	state->registers[0xF] = 0;
 }
 
 static void op_0x8XY4(Chip8State* state, uint8_t Vx, uint8_t Vy)
@@ -260,11 +266,11 @@ static void op_0x8XY5(Chip8State* state, uint8_t Vx, uint8_t Vy)
 	state->registers[0xF] = (vx >= vy) ? 1 : 0;
 }
 
-static void op_0x8XY6(Chip8State* state, uint8_t Vx)
+static void op_0x8XY6(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t vx = state->registers[Vx];
-	state->registers[Vx] = vx >> 1;
-	state->registers[0xF] = vx & 0x1;
+	uint8_t vy = state->registers[Vy];
+	state->registers[Vx] = vy >> 1;
+	state->registers[0xF] = vy & 0x1;
 }
 
 static void op_0x8XY7(Chip8State* state, uint8_t Vx, uint8_t Vy)
@@ -276,11 +282,11 @@ static void op_0x8XY7(Chip8State* state, uint8_t Vx, uint8_t Vy)
 	state->registers[0xF] = (vy >= vx) ? 1 : 0;
 }
 
-static void op_0x8XYE(Chip8State* state, uint8_t Vx)
+static void op_0x8XYE(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t vx = state->registers[Vx];
-	state->registers[Vx] = vx << 1;
-	state->registers[0xF] = (vx & 0x80) >> 7;
+	uint8_t vy = state->registers[Vy];
+	state->registers[Vx] = vy << 1;
+	state->registers[0xF] = (vy & 0x80) >> 7;
 }
 
 static void op_0x9XY0(Chip8State* state, uint8_t Vx, uint8_t Vy)
@@ -305,28 +311,38 @@ static void op_0xCXNN(Chip8State* state, uint8_t Vx)
 
 static void op_0xDXYN(Chip8State* state, uint8_t Vx, uint8_t Vy)
 {
-	uint8_t height = state->opcode & 0x000F;
+	if (state->draw_flag)
+	{
+		state->program_counter -= 2;
+		return;
+	}
 
+	state->draw_flag = true;
+
+	uint8_t height = state->opcode & 0x000F;
 	uint8_t xPosition = state->registers[Vx] % SCREEN_WIDTH;
 	uint8_t yPosition = state->registers[Vy] % SCREEN_HEIGHT;
 
 	state->registers[0xF] = 0;
 
-	for (unsigned int row = 0; row < height; row++)
+	for (uint8_t row = 0; row < height; row++)
 	{
 		uint8_t spriteByte = state->memory[state->index + row];
 
-		for (unsigned int column = 0; column < 8; column++)
+		for (uint8_t column = 0; column < 8; column++)
 		{
 			uint8_t spritePixel = spriteByte & (0x80 >> column);
 
 			if (spritePixel)
 			{
-				uint32_t x = (xPosition + column) % SCREEN_WIDTH;
-				uint32_t y = (yPosition + row) % SCREEN_HEIGHT;
+				uint32_t x = xPosition + column;
+				uint32_t y = yPosition + row;
+
+				if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT) {
+					continue;
+				}
 
 				Pixel* screenPixel = &state->video[y * SCREEN_WIDTH + x];
-
 				bool pixelWasOn = (screenPixel->r == 255);
 
 				if (pixelWasOn)
@@ -432,6 +448,8 @@ static void op_0xFX55(Chip8State* state, uint8_t Vx)
 	for (uint8_t i = 0; i <= Vx; i++) {
 		state->memory[state->index + i] = state->registers[i];
 	}
+
+	state->index += Vx + 1;
 }
 
 static void op_0xFX65(Chip8State* state, uint8_t Vx)
@@ -439,6 +457,8 @@ static void op_0xFX65(Chip8State* state, uint8_t Vx)
 	for (uint8_t i = 0; i <= Vx; ++i) {
 		state->registers[i] = state->memory[state->index + i];
 	}
+
+	state->index += Vx + 1;
 }
 
 void chip8_cycle(Chip8State* state)
@@ -529,7 +549,7 @@ void chip8_cycle(Chip8State* state)
 				break;
 
 			case 0x6:
-				op_0x8XY6(state, Vx);
+				op_0x8XY6(state, Vx, Vy);
 				break;
 
 			case 0x7:
@@ -537,7 +557,7 @@ void chip8_cycle(Chip8State* state)
 				break;
 
 			case 0xE:
-				op_0x8XYE(state, Vx);
+				op_0x8XYE(state, Vx, Vy);
 				break;
 			}
 		} break;

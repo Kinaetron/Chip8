@@ -34,6 +34,7 @@ typedef struct
 	uint8_t waiting_for_key_register;
 	uint8_t last_key_pressed;
 	Pixel video[64 * 32];
+	bool draw_flag;
 	uint16_t opcode;
 	bool rom_loaded;
 } Chip8State;
