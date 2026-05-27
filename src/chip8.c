@@ -85,67 +85,67 @@ void chip_input_state(SDL_Event* event, bool* inputState)
 	switch (event->key.key)
 	{
 		case SDLK_1:
-			inputState[1] = isPressed;
+			inputState[0x1] = isPressed;
 			break;
 
 		case SDLK_2:
-			inputState[2] = isPressed;
+			inputState[0x2] = isPressed;
 			break;
 
 		case SDLK_3:
-			inputState[3] = isPressed;
+			inputState[0x3] = isPressed;
 			break;
 
 		case SDLK_4:
-			inputState[4] = isPressed;
+			inputState[0xC] = isPressed;
 			break;
 
 		case SDLK_Q:
-			inputState[5] = isPressed;
+			inputState[0x4] = isPressed;
 			break;
 
 		case SDLK_W:
-			inputState[6] = isPressed;
+			inputState[0x5] = isPressed;
 			break;
 
 		case SDLK_E:
-			inputState[7] = isPressed;
+			inputState[0x6] = isPressed;
 			break;
 
 		case SDLK_R:
-			inputState[8] = isPressed;
+			inputState[0xD] = isPressed;
 			break;
 
 		case SDLK_A:
-			inputState[9] = isPressed;
+			inputState[0x7] = isPressed;
 			break;
 
 		case SDLK_S:
-			inputState[10] = isPressed;
+			inputState[0x8] = isPressed;
 			break;
 
 		case SDLK_D:
-			inputState[11] = isPressed;
+			inputState[0x9] = isPressed;
 			break;
 
 		case SDLK_F:
-			inputState[12] = isPressed;
+			inputState[0xE] = isPressed;
 			break;
 
 		case SDLK_Z:
-			inputState[13] = isPressed;
+			inputState[0xA] = isPressed;
 			break;
 
 		case SDLK_X:
-			inputState[14] = isPressed;
+			inputState[0x0] = isPressed;
 			break;
 
 		case SDLK_C:
-			inputState[15] = isPressed;
+			inputState[0xB] = isPressed;
 			break;
 
 		case SDLK_V:
-			inputState[0] = isPressed;
+			inputState[0xF] = isPressed;
 			break;
 	}
 }
