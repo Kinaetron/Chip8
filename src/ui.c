@@ -1,7 +1,12 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include "ui.h"
 #include "chip8.h"
+
+
+uint32_t CHIP8_LOAD_ROM_EVENT = 0;
 
 static const SDL_DialogFileFilter filters[] =
 {
@@ -11,21 +16,16 @@ static const SDL_DialogFileFilter filters[] =
 
 static void SDLCALL callback(void* userdata, const char* const* filelist, int filter)
 {
-	Chip8State* state = (Chip8State*)userdata;
-	chip8_state_initialization(state);
-
 	if (!filelist || !*filelist) {
 		return;
 	}
 
-	const char* filePath = filelist[0];
-
-	if (chip8_load_rom(state, filePath)) {
-		SDL_Log("ROM Loaded successfully!");
-	}
-	else {
-		SDL_Log("Failed to load ROM!");
-	}
+	SDL_Event event;
+	SDL_zero(event);
+	event.type = CHIP8_LOAD_ROM_EVENT;
+	event.user.data1 = SDL_strdup(filelist[0]);
+	event.user.data2 = userdata;
+	SDL_PushEvent(&event);
 }
 
 void ui_process_event(SDL_Event* event)

@@ -8,6 +8,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include <stdint.h>
 #include <malloc.h>
@@ -15,11 +16,15 @@
 #include "ui.h"
 #include "context.h"
 #include "renderer.h"
+#include "chip8.h"
 
+#define CYCLES_PER_FRAME 10
 #define MS_PER_FRAME (1000.0 / 60.0)
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 {
+	CHIP8_LOAD_ROM_EVENT = SDL_RegisterEvents(1);
+
 	Context* context = calloc(1, sizeof(Context));
 	if (context == NULL) 
 	{
@@ -58,6 +63,21 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 	chip_input_state(event, context->state->keypad);
 	ui_process_event(event);
 
+	if (event->type == CHIP8_LOAD_ROM_EVENT) 
+	{
+		const char* path = (const char*)event->user.data1;
+
+		if (chip8_load_rom(context->state, path)) {
+			SDL_Log("ROM loaded successfully!");
+		}
+		else {
+			SDL_Log("Failed to load ROM!");
+		}
+
+		SDL_free(event->user.data1);
+		return SDL_APP_CONTINUE;
+	}
+
 	if (event->type == SDL_EVENT_QUIT) {
 		return SDL_APP_SUCCESS;
 	}
@@ -70,7 +90,18 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 	uint64_t start_time = SDL_GetPerformanceCounter();
 	Context* context = (Context*)appstate;
 
-	chip8_cycle(context->state);
+	context->state->draw_flag = false;
+
+	for (int i = 0; i < CYCLES_PER_FRAME; i++) {
+		chip8_cycle(context->state);
+	}
+
+	if (context->state->delay_timer > 0) {
+		context->state->delay_timer--;
+	}
+	if (context->state->sound_timer > 0) {
+		context->state->sound_timer--;
+	}
 
 	SDL_AppResult render_result = Render(
 		context->gpu_device,

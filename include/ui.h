@@ -7,6 +7,9 @@
 #include <cimgui_impl.h>
 
 #include "chip8.h"
+#include <stdint.h>
+
+extern uint32_t CHIP8_LOAD_ROM_EVENT;
 
 #define igGetIO igGetIO_Nil
 
