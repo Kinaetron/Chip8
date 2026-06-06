@@ -6,6 +6,7 @@
 #include <SDL3/SDL_gpu.h>
 
 typedef struct GraphicsContext GraphicsContext;
+typedef struct AudioContext AudioContext;
 
 typedef struct Context
 {
@@ -13,6 +14,7 @@ typedef struct Context
 	SDL_Window* window;
 	SDL_GPUDevice* gpu_device;
 	GraphicsContext* graphicsContext;
+	AudioContext* audioContext;
 } Context;
 
 #endif

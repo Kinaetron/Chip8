@@ -26,7 +26,7 @@ typedef struct GraphicsContext
 } GraphicsContext;
 
 
-SDL_GPUShader* LoadShader(
+SDL_GPUShader* load_shader(
 	SDL_GPUDevice* device,
 	const char* shaderFilename,
 	uint32_t samplerCount,
@@ -34,16 +34,15 @@ SDL_GPUShader* LoadShader(
 	uint32_t storageBufferCount,
 	uint32_t storageTextureCount);
 
-SDL_AppResult InitializeRenderer(Context* context);
+SDL_AppResult initialize_renderer(Context* context);
 
-
-SDL_AppResult Render(
+SDL_AppResult render(
 	SDL_GPUDevice* device, 
 	GraphicsContext* context, 
 	SDL_Window* window,
 	Chip8State* state);
 
-void DestroyRenderer(
+void destroy_renderer(
 	SDL_GPUDevice* device,
 	GraphicsContext* context);
 

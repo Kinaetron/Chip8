@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "context.h"
 #include "renderer.h"
+#include "audio.h"
 #include "chip8.h"
 
 #define CYCLES_PER_FRAME 10
@@ -46,9 +47,21 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 		return SDL_APP_FAILURE;
 	}
 
-	SDL_AppResult result = InitializeRenderer(context);
+	SDL_AppResult result = initialize_renderer(context);
 
 	if (result == SDL_APP_FAILURE) {
+		return SDL_APP_FAILURE;
+	}
+
+	context->audioContext = calloc(1, sizeof(AudioContext));
+	if (context->audioContext == NULL)
+	{
+		SDL_Log("Couldn't allocate memory for audio context");
+		return SDL_APP_FAILURE;
+	}
+
+	bool audioResult = audio_initialize(context->audioContext);
+	if (!audioResult) {
 		return SDL_APP_FAILURE;
 	}
 
@@ -96,6 +109,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 		chip8_cycle(context->state);
 	}
 
+	audio_update(context->audioContext, context->state->sound_timer > 0);
+
 	if (context->state->delay_timer > 0) {
 		context->state->delay_timer--;
 	}
@@ -103,7 +118,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 		context->state->sound_timer--;
 	}
 
-	SDL_AppResult render_result = Render(
+	SDL_AppResult render_result = render(
 		context->gpu_device,
 		context->graphicsContext,
 		context->window,
@@ -130,7 +145,8 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result)
 
 	if (context) 
 	{
-		DestroyRenderer(context->gpu_device, context->graphicsContext);
+		destroy_renderer(context->gpu_device, context->graphicsContext);
+		audio_destroy(context->audioContext);
 
 		free(context->graphicsContext);
 		SDL_DestroyGPUDevice(context->gpu_device);
