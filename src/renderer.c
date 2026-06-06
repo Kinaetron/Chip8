@@ -2,7 +2,7 @@
 #include "context.h"
 #include "renderer.h"
 
-SDL_GPUShader* LoadShader(
+SDL_GPUShader* load_shader(
 	SDL_GPUDevice* device, 
 	const char* shaderFilename, 
 	uint32_t samplerCount, 
@@ -87,10 +87,10 @@ SDL_GPUShader* LoadShader(
 	return shader;
 }
 
-SDL_AppResult InitializeRenderer(Context* context)
+SDL_AppResult initialize_renderer(Context* context)
 {
 	SDL_SetAppMetadata("Chip 8 Emulator", "1.0", "com.chip8-emulator");
-	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO))
 	{
 		SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
@@ -137,14 +137,14 @@ SDL_AppResult InitializeRenderer(Context* context)
 
 	ui_initalization(main_scale, context->window, context->gpu_device);
 
-	SDL_GPUShader* vertexShader = LoadShader(context->gpu_device, "chip8.vert", 0, 0, 0, 0);
+	SDL_GPUShader* vertexShader = load_shader(context->gpu_device, "chip8.vert", 0, 0, 0, 0);
 	if (vertexShader == NULL)
 	{
 		SDL_Log("Failed to create vertex shader %s", SDL_GetError());
 		return -1;
 	}
 
-	SDL_GPUShader* fragmentShader = LoadShader(context->gpu_device, "chip8.frag", 1, 0, 0, 0);
+	SDL_GPUShader* fragmentShader = load_shader(context->gpu_device, "chip8.frag", 1, 0, 0, 0);
 	if (fragmentShader == NULL)
 	{
 		SDL_Log("Failed to create fragment shader %s", SDL_GetError());
@@ -317,7 +317,7 @@ SDL_AppResult InitializeRenderer(Context* context)
 	return 0;
 }
 
-SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window, Chip8State* state)
+SDL_AppResult render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window* window, Chip8State* state)
 {
 	SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
 
@@ -398,7 +398,7 @@ SDL_AppResult Render(SDL_GPUDevice* device, GraphicsContext* context, SDL_Window
 	return SDL_APP_CONTINUE;
 }
 
-void DestroyRenderer(SDL_GPUDevice* device, GraphicsContext* context)
+void destroy_renderer(SDL_GPUDevice* device, GraphicsContext* context)
 {
 	SDL_ReleaseGPUGraphicsPipeline(device, context->pipeline);
 	SDL_ReleaseGPUBuffer(device, context->vertexBuffer);
