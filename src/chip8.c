@@ -360,7 +360,7 @@ static void op_0xDXYN(Chip8State* state, uint8_t Vx, uint8_t Vy)
 
 static void op_0xEX9E(Chip8State* state, uint8_t Vx)
 {
-	uint8_t key = state->registers[Vx];
+	uint8_t key = state->registers[Vx] & 0xF;
 
 	if (state->keypad[key]) {
 		state->program_counter += 2;
@@ -369,7 +369,7 @@ static void op_0xEX9E(Chip8State* state, uint8_t Vx)
 
 static void op_0xEXA1(Chip8State* state, uint8_t Vx)
 {
-	uint8_t key = state->registers[Vx];
+	uint8_t key = state->registers[Vx] & 0xF;
 
 	if (!state->keypad[key]) {
 		state->program_counter += 2;
@@ -425,7 +425,7 @@ static void op_OxFX1E(Chip8State* state, uint8_t Vx) {
 
 static void op_0xFX29(Chip8State* state, uint8_t Vx)
 {
-	uint8_t digit = state->registers[Vx];
+	uint8_t digit = state->registers[Vx] & 0xF;
 
 	state->index = (5 * digit);
 }
@@ -445,7 +445,12 @@ static void op_0xFX33(Chip8State* state, uint8_t Vx)
 
 static void op_0xFX55(Chip8State* state, uint8_t Vx)
 {
-	for (uint8_t i = 0; i <= Vx; i++) {
+	for (uint8_t i = 0; i <= Vx; i++) 
+	{
+		if (state->index + i >= CHIP8_MEMORY_SIZE) {
+			break;
+		}
+
 		state->memory[state->index + i] = state->registers[i];
 	}
 
@@ -454,7 +459,12 @@ static void op_0xFX55(Chip8State* state, uint8_t Vx)
 
 static void op_0xFX65(Chip8State* state, uint8_t Vx)
 {
-	for (uint8_t i = 0; i <= Vx; ++i) {
+	for (uint8_t i = 0; i <= Vx; ++i) 
+	{
+		if (state->index + i >= CHIP8_MEMORY_SIZE) {
+			break;
+		}
+
 		state->registers[i] = state->memory[state->index + i];
 	}
 
