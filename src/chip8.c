@@ -159,6 +159,12 @@ static void op_0x00E0(Chip8State* state)
 
 static void op_0x00EE(Chip8State* state)
 {
+	if (state->stack_pointer == 0)
+	{
+		SDL_Log("Stack underflow at PC: 0x%03X", state->program_counter);
+		return;
+	}
+
 	state->program_counter = 
 		state->stack[--state->stack_pointer];
 }
@@ -171,6 +177,12 @@ static void op_0x1NNN(Chip8State* state)
 
 static void op_0x2NNN(Chip8State* state)
 {
+	if (state->stack_pointer >= 16) 
+	{
+		SDL_Log("Stack overflow at PC: 0x%03X", state->program_counter);
+		return;
+	}
+
 	uint16_t address = state->opcode & 0x0FFF;
 
 	state->stack[state->stack_pointer++] = state->program_counter;
@@ -490,7 +502,7 @@ void chip8_cycle(Chip8State* state)
 	{
 		case 0x0000:
 		{
-			switch (state->opcode & 0x00FF)
+			switch (state->opcode & 0x0FFF)
 			{
 				case 0x00E0:
 					op_0x00E0(state);
